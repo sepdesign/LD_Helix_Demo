@@ -1,0 +1,30 @@
+# Secrets — never commit
+.env
+
+# Assignment PDF — proprietary, not for public repo
+Candidate_HW_-_SE_2025.pdf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Go
+go-service/vendor/
+
+# Java
+java-service/target/
+java-service/.mvn/
+*.class
+*.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

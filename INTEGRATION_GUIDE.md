@@ -1,0 +1,665 @@
+# Integrating LaunchDarkly into Helix Health Group
+
+A step-by-step walkthrough showing how to take an application with **no feature management** and progressively add LaunchDarkly capabilities — from basic flag evaluation through real-time listeners, targeted rollouts, multi-context evaluation, experimentation, and AI Config.
+
+---
+
+## The Starting Point: Without LaunchDarkly
+
+Most teams control feature visibility using environment variables or hardcoded configuration. Here is what Helix looked like before LaunchDarkly.
+
+### Python
+
+```python
+# config.py — the DIY approach
+import os
+
+FEATURES = {
+    "auto_scribe_enabled": os.getenv("ENABLE_AUTO_SCRIBE", "false").lower() == "true",
+    "maternity_pathway":   os.getenv("ENABLE_MATERNITY", "false").lower() == "true",
+}
+
+# main.py
+@app.post("/encounter")
+async def encounter(request: Request):
+    if FEATURES["auto_scribe_enabled"]:
+        return await run_ai_coding_pipeline(transcript)
+    return run_manual_coding_workflow(transcript)
+```
+
+### Go
+
+```go
+// config.go
+var featureFlags = map[string]bool{
+    "maternityPathway": os.Getenv("ENABLE_MATERNITY") == "true",
+}
+
+// handler.go
+func featureHandler(w http.ResponseWriter, r *http.Request) {
+    enabled := featureFlags["maternityPathway"]
+    // ...
+}
+```
+
+### Java
+
+```java
+// application.properties
+feature.maternity.enabled=${ENABLE_MATERNITY:false}
+
+// FeatureController.java
+@Value("${feature.maternity.enabled}")
+private boolean maternityEnabled;
+
+@GetMapping("/feature")
+public Map<String, Object> getFeature() {
+    return Map.of("enabled", maternityEnabled);
+}
+```
+
+---
+
+## Why This Breaks Down
+
+| Problem | DIY (env var flags) | With LaunchDarkly |
+|---|---|---|
+| Change a flag value | Redeploy the service | Toggle in dashboard — live in seconds |
+| Target specific users | Not possible | Individual + rule-based targeting |
+| Instant browser updates | Page reload or service restart | Server-Sent Events — no reload |
+| Audit trail | None | Who changed what, when, and why |
+| A/B experimentation | Manual analytics pipeline | Built-in experiment framework |
+| AI model/prompt control | Hardcoded string constants | Change from dashboard, no deploy |
+| Rollback under incident | Revert commit, deploy | Toggle the flag off |
+
+---
+
+## Step-by-Step Integration
+
+### Step 1: Sign Up and Get Your SDK Key
+
+1. Create a free trial at [launchdarkly.com/start-trial](https://launchdarkly.com/start-trial/)
+2. Go to **Organization settings → Environments → Test**
+3. Copy your **Server-side SDK key** (starts with `sdk-`)
+4. Also copy your **Client-side ID** for any browser-side evaluations
+5. Store both in your `.env` file — never commit them
+
+```env
+LD_SERVER_SDK_KEY="sdk-your-key-here"
+LD_CLIENT_SIDE_ID="your-client-side-id"
+```
+
+> The server-side SDK key is secret. The client-side ID is safe to expose in browser code.
+
+---
+
+### Step 2: Install the SDK
+
+#### Python
+
+```bash
+pip install launchdarkly-server-sdk==9.8.0
+```
+
+For AI Config support, also install the AI SDK:
+
+```bash
+pip install launchdarkly-server-sdk-ai==0.6.0
+pip install anthropic==0.40.0
+```
+
+#### Go
+
+```bash
+go get github.com/launchdarkly/go-server-sdk/v7
+go get github.com/launchdarkly/go-sdk-common/v3
+go get github.com/joho/godotenv   # optional: load .env file
+```
+
+#### Java (Maven `pom.xml`)
+
+```xml
+<dependency>
+    <groupId>com.launchdarkly</groupId>
+    <artifactId>launchdarkly-java-server-sdk</artifactId>
+    <version>7.5.0</version>
+</dependency>
+<dependency>
+    <groupId>io.github.cdimascio</groupId>
+    <artifactId>dotenv-java</artifactId>
+    <version>3.0.0</version>
+</dependency>
+```
+
+---
+
+### Step 3: Initialize the Client
+
+Initialize **once at application startup** and reuse the instance — the SDK maintains a persistent streaming connection to LaunchDarkly and caches flag values locally.
+
+#### Python
+
+```python
+import ldclient
+from ldclient import Config
+import os
+
+# Initialize once at startup
+ldclient.set_config(Config(os.environ["LD_SERVER_SDK_KEY"]))
+ld = ldclient.get()
+
+# Optional: wait for the SDK to receive the full flag payload
+# ld.wait_for_initialization(5)
+```
+
+#### Go
+
+```go
+import (
+    ld    "github.com/launchdarkly/go-server-sdk/v7"
+    "time"
+)
+
+// Initialize once — blocks until connected or timeout
+client, err := ld.MakeClient(os.Getenv("LD_SERVER_SDK_KEY"), 5*time.Second)
+if err != nil {
+    log.Fatalf("LaunchDarkly failed to initialize: %v", err)
+}
+defer client.Close()
+```
+
+#### Java (Spring Boot `@Configuration`)
+
+```java
+import com.launchdarkly.sdk.server.LDClient;
+import io.github.cdimascio.dotenv.Dotenv;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import javax.annotation.PreDestroy;
+
+@Configuration
+public class LdConfig {
+
+    @Bean
+    public LDClient ldClient() {
+        // Load .env relative to the project root
+        Dotenv dotenv = Dotenv.configure().directory("../").load();
+        String sdkKey = dotenv.get("LD_SERVER_SDK_KEY");
+        return new LDClient(sdkKey);
+    }
+
+    @PreDestroy
+    public void shutdown(LDClient ldClient) throws Exception {
+        ldClient.close();
+    }
+}
+```
+
+---
+
+### Step 4: Create Your First Flag in the Dashboard
+
+1. Log in to [app.launchdarkly.com](https://app.launchdarkly.com)
+2. Go to **Features → Flags → Create flag**
+3. Name: `Helix Auto-Scribe` | Key: `helix-auto-scribe` | Type: **Boolean**
+4. Default variation: **false** (safe default: off)
+5. Save the flag
+
+> The flag **key** in the dashboard must exactly match the string you use in your code.
+
+---
+
+### Step 5: Wrap Your Feature with a Flag Evaluation
+
+Replace the environment variable check with a LaunchDarkly flag evaluation. Every evaluation requires a **Context** — the who being evaluated.
+
+#### Python
+
+```python
+from ldclient import Context
+
+# Before (DIY):
+if os.getenv("ENABLE_AUTO_SCRIBE") == "true":
+    run_ai_coding()
+
+# After (LaunchDarkly):
+context = (
+    Context.builder(user_key)
+    .set("department", department)
+    .set("role", role)
+    .build()
+)
+
+enabled = ld.bool_variation("helix-auto-scribe", context, False)
+
+if enabled:
+    run_ai_coding()    # new path — controlled by LD flag
+else:
+    run_manual_form()  # old path — safe default
+```
+
+#### Go
+
+```go
+import ldcontext "github.com/launchdarkly/go-sdk-common/v3/ldcontext"
+
+// Before (DIY):
+if featureFlags["maternityPathway"] { ... }
+
+// After (LaunchDarkly):
+ctx := ldcontext.NewBuilder(userID).
+    SetString("department", department).
+    SetString("role", role).
+    Build()
+
+enabled, _ := client.BoolVariation("helix-maternity-pathway", ctx, false)
+```
+
+#### Java
+
+```java
+import com.launchdarkly.sdk.LDContext;
+
+// Before (DIY):
+if (maternityEnabled) { ... }
+
+// After (LaunchDarkly):
+LDContext ctx = LDContext.builder(userId)
+        .set("role", role)
+        .set("department", department)
+        .build();
+
+boolean enabled = ldClient.boolVariation("helix-maternity-pathway", ctx, false);
+```
+
+---
+
+### Step 6: Get the Evaluation Reason (Go)
+
+`BoolVariation` returns the value. `BoolVariationDetail` returns the value **and the reason** — which targeting rule matched, or whether it fell through to the default.
+
+```go
+detail, err := client.BoolVariationDetail(
+    "helix-maternity-pathway",
+    ctx,
+    false,
+)
+
+// detail.Value            — the flag value (true / false)
+// detail.Reason.Kind      — EvaluationReasonKind:
+//                             TARGET_MATCH  (individual target matched)
+//                             RULE_MATCH    (a targeting rule matched)
+//                             FALLTHROUGH   (no rules matched, using default)
+//                             OFF           (flag is disabled)
+// detail.Reason.RuleIndex — which rule index matched (for RULE_MATCH)
+```
+
+Surface `detail.Reason.Kind` in your API response to show users — and your team — exactly why they are getting a particular experience.
+
+---
+
+### Step 7: Add a Real-Time Flag Listener (No Page Reload)
+
+The LD server-side SDK maintains a streaming connection to LaunchDarkly. When a flag changes, a callback fires on the **server side** in milliseconds — no polling required. Pair this with Server-Sent Events to push the change to every connected browser instantly.
+
+#### Register a flag change listener (Python)
+
+```python
+import asyncio
+import json
+
+_sse_queues: list[asyncio.Queue] = []
+_SYSTEM_CTX = Context.builder("helix-system").build()
+
+def _on_flag_change(event) -> None:
+    """Fires in a background thread when the flag value changes."""
+    payload = json.dumps({
+        "flag":  "helix-auto-scribe",
+        "value": event.current_value,
+    })
+    loop = asyncio.get_event_loop()
+    for q in _sse_queues:
+        loop.call_soon_threadsafe(q.put_nowait, payload)
+
+ld.get_flag_tracker().add_flag_value_change_listener(
+    "helix-auto-scribe",
+    _SYSTEM_CTX,
+    _on_flag_change,
+)
+```
+
+#### Stream changes to the browser via SSE (Python + FastAPI)
+
+```python
+from fastapi.responses import StreamingResponse
+from typing import AsyncGenerator
+
+@app.get("/events")
+async def sse_events():
+    queue: asyncio.Queue = asyncio.Queue()
+    _sse_queues.append(queue)
+
+    async def generate() -> AsyncGenerator[str, None]:
+        # Send current flag state immediately on connect
+        current = ld.bool_variation("helix-auto-scribe", _SYSTEM_CTX, False)
+        yield f"data: {json.dumps({'flag': 'helix-auto-scribe', 'value': current})}\n\n"
+
+        try:
+            while True:
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=30)
+                    yield f"data: {payload}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"  # prevents proxy/browser timeout
+        finally:
+            _sse_queues.remove(queue)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+```
+
+#### Listen from the browser (JavaScript)
+
+```javascript
+const es = new EventSource("http://localhost:8000/events");
+
+es.onmessage = (event) => {
+    const { flag, value } = JSON.parse(event.data);
+    if (flag === "helix-auto-scribe") {
+        // Panel appears or hides with no page reload
+        document.getElementById("auto-scribe-panel").hidden = !value;
+    }
+};
+```
+
+**Result:** Toggle the flag in the LaunchDarkly dashboard — every connected browser updates in under one second, with no page refresh.
+
+---
+
+### Step 8: Set Up a Flag Trigger for Automated Rollback
+
+A trigger gives external systems a webhook URL that turns your flag off automatically — your monitoring system becomes your rollback mechanism.
+
+**In the LaunchDarkly dashboard:**
+1. Open `helix-auto-scribe` → **Settings** tab → **Triggers** → **Add trigger**
+2. Type: **Generic trigger** | Action: **Turn flag off**
+3. Copy the generated URL
+
+**Test it manually:**
+
+```bash
+curl -X POST "https://app.launchdarkly.com/api/v1/flags/triggers/YOUR_TRIGGER_URL"
+```
+
+**In production:** wire this URL into PagerDuty, Datadog, or any alerting system. When an error rate threshold is breached, the monitor fires the webhook automatically — no human needed in the loop.
+
+---
+
+### Step 9: Add Context Attributes for Targeting
+
+The more attributes you put on your context, the more precise your targeting rules can be. Add whatever attributes are meaningful for your rollout decisions.
+
+#### Python
+
+```python
+context = (
+    Context.builder(user_key)
+    .set("department",    "maternity")
+    .set("role",          "attending")
+    .set("hospitalTier",  "level1")
+    .set("hasBirthCenter", True)
+    .build()
+)
+```
+
+#### Go
+
+```go
+ctx := ldcontext.NewBuilder(userID).
+    SetString("department",   "maternity").
+    SetString("role",         "attending").
+    SetString("hospitalTier", "level1").
+    SetBool("hasBirthCenter", true).
+    Build()
+```
+
+#### Java
+
+```java
+LDContext ctx = LDContext.builder(userId)
+        .set("department",    "maternity")
+        .set("role",          "attending")
+        .set("hospitalTier",  "level1")
+        .build();
+```
+
+---
+
+### Step 10: Configure Targeting Rules in the Dashboard
+
+Open `helix-maternity-pathway` in LaunchDarkly and set up the following. No code changes required.
+
+**Individual targets** — specific user keys bypass all rules:
+- `dr.chen@helixhealth.org` → `true`
+- `mary.johnson@helixhealth.org` → `true`
+
+**Rules** — evaluated in order, first match wins:
+
+| Rule | Conditions | Serve |
+|---|---|---|
+| 1 | `department` is `maternity` AND `role` is `attending` | `true` |
+| 2 | `department` is `maternity` AND `role` is `charge_nurse` | `true` |
+| 3 | `hospitalTier` is `level1` AND `hasBirthCenter` is `true` | `true` |
+| Default | (all others) | `false` |
+
+Future rollout stages — opening to more departments, more roles, all hospitals — are dashboard changes, not code changes.
+
+---
+
+### Step 11: Multi-Context Evaluation (Java)
+
+Multi-context evaluates a single flag against **multiple independent contexts simultaneously**. A user's access can depend on who they are *and* what organization they belong to — without coupling those concerns in your code.
+
+```java
+import com.launchdarkly.sdk.ContextKind;
+import com.launchdarkly.sdk.LDContext;
+
+// User context — the individual provider
+LDContext userCtx = LDContext
+        .builder(ContextKind.of("user"), userId)
+        .name(name)
+        .set("role",       role)
+        .set("department", department)
+        .build();
+
+// Organisation context — the hospital
+LDContext orgCtx = LDContext
+        .builder(ContextKind.of("organization"), orgId)
+        .set("plan",          orgPlan)        // "enterprise" | "standard"
+        .set("hasBirthCenter", hasBirthCenter) // true | false
+        .build();
+
+// Combine — LD evaluates targeting rules against both simultaneously
+LDContext multiCtx = LDContext.createMulti(userCtx, orgCtx);
+
+boolean enabled = ldClient.boolVariation("helix-maternity-pathway", multiCtx, false);
+```
+
+**In the dashboard:** you can now write rules like:
+- `organization.plan` is `enterprise` → `true`
+- `user.role` is `attending` AND `organization.hasBirthCenter` is `true` → `true`
+
+This is the standard pattern for B2B SaaS entitlements — org-level access grants that work alongside user-level targeting.
+
+---
+
+### Step 12: Track Experimentation Events (Java)
+
+Wire custom metric events into LaunchDarkly Experimentation to measure the impact of each flag variation.
+
+```java
+// Fires when a provider engages with the new maternity pathway feature.
+// LD attributes this event to the correct flag variation automatically.
+ldClient.trackMetric(
+        "maternity-pathway-engaged",  // must match the metric key in LD Experimentation
+        ctx,
+        1.0                           // optional numeric value
+);
+```
+
+**Setup in the dashboard:**
+1. **Experimentation → Metrics → Create metric** | Key: `maternity-pathway-engaged` | Type: Custom
+2. Open `helix-maternity-pathway` → **Experiments** tab → **Create experiment**
+3. Attach the metric; configure traffic allocation
+4. After enough events accumulate, LD shows statistical significance per variation
+
+---
+
+### Step 13: Integrate AI Config (AgentControl)
+
+AI Config lets you control your LLM's model name and system prompt from the LaunchDarkly dashboard. Change either one — the next API call picks it up, no deployment required.
+
+**Install the AI SDK:**
+
+```bash
+pip install launchdarkly-server-sdk-ai==0.6.0
+```
+
+**Create an AI Config in the dashboard:**
+
+1. Go to **Agents → Configs → Create config**
+2. Name: `Helix Clinical AI` | Key: `helix-clinical-ai`
+3. Add three variations (model + system prompt each):
+   - **HELIX-SCRIBE-ED** — `claude-haiku-4-5-20251001`, ED coding instructions
+   - **HELIX-SCRIBE-OB** — `claude-sonnet-4-5-20251001`, OB coding instructions
+   - **HELIX-PARENT** — `claude-sonnet-4-5-20251001`, parent guidance instructions
+4. Add targeting rules: `department = ob` → Variation 2, `department = maternity-parent` → Variation 3, default → Variation 1
+5. Enable the config
+
+**Integrate in Python:**
+
+```python
+from ldai.client import LDAIClient, AIConfig
+import anthropic
+
+# Wrap the existing LD client — one extra line
+ai_client = LDAIClient(ld)
+
+anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+# Build a context — the department attribute routes to the right AI variation
+context = (
+    Context.builder(user_key)
+    .set("department", "ed")          # → HELIX-SCRIBE-ED (Haiku)
+    # .set("department", "ob")         # → HELIX-SCRIBE-OB (Sonnet)
+    # .set("department", "maternity-parent")  # → HELIX-PARENT (Sonnet)
+    .build()
+)
+
+# One call — model name and system prompt come from the LD dashboard
+ai_config, tracker = ai_client.config(
+    "helix-clinical-ai",
+    context,
+    AIConfig(enabled=False),          # safe fallback if flag is off
+)
+
+if not ai_config.enabled:
+    return {"error": "AI feature is currently disabled"}
+
+# Extract model and prompt from the LD config
+model_name = (
+    ai_config.model.name
+    if ai_config.model and ai_config.model.name
+    else "claude-haiku-4-5-20251001"  # fallback model
+)
+system_prompt = next(
+    (m.content for m in (ai_config.messages or []) if m.role == "system"),
+    "You are a clinical coding assistant. Return valid JSON only.",
+)
+
+# Call Anthropic — model and prompt are fully LD-controlled
+response = anthropic_client.messages.create(
+    model=model_name,
+    max_tokens=1024,
+    system=system_prompt,
+    messages=[{"role": "user", "content": clinical_transcript}],
+)
+
+# Track usage back to LaunchDarkly for monitoring and experimentation
+tracker.track_success()
+tracker.track_tokens(
+    input_tokens=response.usage.input_tokens,
+    output_tokens=response.usage.output_tokens,
+)
+```
+
+**What you can now do from the LD dashboard without touching code:**
+- Swap `claude-haiku-4-5-20251001` to `claude-sonnet-4-5-20251001` for ED (more accurate, higher cost)
+- Tighten the OB prompt after a coding audit finding
+- Add a fourth AI persona for a new specialty
+- A/B test two prompt variants and measure accuracy differences
+
+---
+
+## Verifying Your Integration
+
+After each step, confirm the integration is working end-to-end.
+
+```bash
+# 1. Confirm the Python service is up and LD SDK is initialized
+curl http://localhost:8000/health
+# Expected: {"status": "ok", "sdk_initialized": true, ...}
+
+# 2. Confirm flag evaluation works (Python)
+curl -X POST http://localhost:8000/code-encounter \
+  -H "Content-Type: application/json" \
+  -d '{"transcript": "Patient presents with chest pain.", "department": "ed", "userId": "test-provider"}'
+
+# 3. Confirm targeting + evaluation reason works (Go)
+curl "http://localhost:8001/feature?userId=dr.chen@helixhealth.org&department=maternity&role=attending"
+# Expected: {"enabled": true, "reason": {"kind": "TARGET_MATCH"}, ...}
+
+curl "http://localhost:8001/feature?userId=nurse.kim@helixhealth.org&department=icu&role=floor_nurse"
+# Expected: {"enabled": false, "reason": {"kind": "FALLTHROUGH"}, ...}
+
+# 4. Confirm multi-context evaluation works (Java)
+curl "http://localhost:8002/feature/multi-context?userId=test&orgPlan=enterprise&hasBirthCenter=true"
+# Expected: {"enabled": true, ...}
+
+# 5. Confirm experimentation event tracking (Java)
+curl -X POST http://localhost:8002/track-event \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "test-provider", "eventName": "maternity-pathway-engaged"}'
+# Expected: {"tracked": true, ...}
+```
+
+---
+
+## What You've Unlocked
+
+| LaunchDarkly Capability | Helix Implementation | Benefit |
+|---|---|---|
+| Feature flag release | `helix-auto-scribe` wraps AI coding panel | Deploy anytime; release when confident |
+| Real-time listener | SSE stream — flag change → browser update | No page reload, no polling |
+| Trigger-based rollback | Webhook → flag off | Seconds to remediate, not hours |
+| Context-based targeting | Department, role, hospital tier attributes | Precise rollout without code changes |
+| Individual targeting | Beta providers by email key | Controlled beta before broad release |
+| Rule-based targeting | Specialty + tier rules | Surgical expansion stage by stage |
+| Multi-context evaluation | User + organization contexts combined | B2B entitlements pattern |
+| Experimentation | Metric events on maternity pathway | Data-driven release decisions |
+| AI Config | Model + prompt per clinical persona | Iterate on AI without deployments |
+
+---
+
+## Further Reading
+
+- [LaunchDarkly Python SDK docs](https://docs.launchdarkly.com/sdk/server-side/python)
+- [LaunchDarkly Go SDK docs](https://docs.launchdarkly.com/sdk/server-side/go)
+- [LaunchDarkly Java SDK docs](https://docs.launchdarkly.com/sdk/server-side/java)
+- [AI Config (AgentControl) docs](https://docs.launchdarkly.com/home/ai-configs)
+- [Experimentation docs](https://docs.launchdarkly.com/home/experimentation)
+- [Flag triggers docs](https://docs.launchdarkly.com/home/flags/triggers)
+- [Multi-context docs](https://docs.launchdarkly.com/home/contexts/multi-contexts)

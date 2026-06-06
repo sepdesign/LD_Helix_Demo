@@ -4,11 +4,13 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Helix Health Group — Java Clinical Analytics Service
+ * Helix Health Group: Java Clinical Service
  *
- * Covers:
- *   Part 2  — Multi-context flag evaluation (user context + organisation context)
- *   Extra   — Custom metric event tracking for LaunchDarkly Experimentation
+ * Part 3 of the demo: configuration as a flag. A developer built a blood-pressure
+ * alert (GET /lab-check); the threshold it fires at is a LaunchDarkly Number flag,
+ * helix-bp-alert-threshold, that the clinical team owns in the dashboard. The Java
+ * SDK reads the flag at request time, so changing the number re-tunes the alert
+ * instantly, with no redeploy - flags aren't just on/off switches.
  *
  * Run:
  *   mvn spring-boot:run

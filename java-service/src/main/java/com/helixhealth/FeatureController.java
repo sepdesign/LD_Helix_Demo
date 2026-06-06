@@ -1,6 +1,5 @@
 package com.helixhealth;
 
-import com.launchdarkly.sdk.ContextKind;
 import com.launchdarkly.sdk.LDContext;
 import com.launchdarkly.sdk.server.LDClient;
 import org.springframework.web.bind.annotation.*;
@@ -8,20 +7,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * REST endpoints demonstrating:
+ * REST endpoints demonstrating LaunchDarkly with the Java server SDK:
  *
- *   GET  /feature/multi-context
- *        Part 2 — Evaluates helix-maternity-pathway against a MULTI-CONTEXT:
- *        both a "user" context (the individual provider) and an "organization"
- *        context (the hospital) are combined.  LD evaluates rules against all
- *        contexts simultaneously — an enterprise plan at the org level can
- *        unlock a feature even if the individual user context alone wouldn't.
- *
- *   POST /track-event
- *        Extra Credit — Tracks a custom conversion event for Experimentation.
- *        Wire the helix-maternity-pathway flag to an LD Experiment and attach
- *        the "maternity-pathway-engaged" metric.  LD will attribute events to
- *        the correct experiment variation automatically.
+ *   GET  /lab-check?value=<systolic BP>
+ *        Part 3: reads helix-bp-alert-threshold (a NUMBER flag) and decides
+ *        whether a blood-pressure reading should raise an alert. The alert
+ *        logic lives in this code; the threshold it compares against is owned
+ *        in the LaunchDarkly dashboard, so the clinical team can re-tune it
+ *        with no redeploy. Flags aren't only on/off switches - they can carry
+ *        configuration values your code reads at runtime.
  *
  *   GET  /health
  *        SDK liveness check.
@@ -37,100 +31,31 @@ public class FeatureController {
     }
 
     /**
-     * GET /feature/multi-context
+     * GET /lab-check?value=<systolic blood pressure reading, in mmHg>
      *
-     * Query params:
-     *   userId        — provider key  (e.g. dr.chen@helixhealth.org)
-     *   name          — display name
-     *   role          — attending | resident | charge_nurse | floor_nurse
-     *   department    — maternity | ed | icu | general
-     *   orgId         — hospital / organisation key  (e.g. helix-northwest)
-     *   orgPlan       — enterprise | standard | community
-     *   hasBirthCenter — true | false
-     *
-     * Multi-context: the same flag evaluation runs against BOTH the user
-     * context and the organization context.  Rules that target by org plan
-     * can unlock the feature without requiring individual user targeting.
+     * A developer built this blood-pressure alert, but the threshold it fires at
+     * is not hard-coded. It's a LaunchDarkly Number flag, helix-bp-alert-threshold
+     * (default 140 mmHg, the usual preeclampsia screening cut-off), and the
+     * clinical team owns that number in the dashboard. Because the SDK reads it at
+     * request time, changing the flag re-tunes this endpoint's behaviour instantly,
+     * with no redeploy.
      */
-    @GetMapping("/feature/multi-context")
-    public Map<String, Object> multiContextFeature(
-            @RequestParam(defaultValue = "provider-default") String userId,
-            @RequestParam(defaultValue = "") String name,
-            @RequestParam(defaultValue = "general") String role,
-            @RequestParam(defaultValue = "general") String department,
-            @RequestParam(defaultValue = "helix-default") String orgId,
-            @RequestParam(defaultValue = "standard") String orgPlan,
-            @RequestParam(defaultValue = "false") String hasBirthCenter) {
-
-        // User context — individual provider attributes
-        LDContext userCtx = LDContext.builder(ContextKind.of("user"), userId)
-                .name(name)
-                .set("role", role)
-                .set("department", department)
+    @GetMapping("/lab-check")
+    public Map<String, Object> labCheck(@RequestParam(defaultValue = "0") int value) {
+        LDContext ctx = LDContext.builder("helix-clinical-platform")
+                .name("Helix Clinical Platform")
                 .build();
 
-        // Organisation context — hospital-level attributes
-        // Rules in LD can match on orgPlan="enterprise" here regardless of user
-        LDContext orgCtx = LDContext.builder(ContextKind.of("organization"), orgId)
-                .set("plan", orgPlan)
-                .set("hasBirthCenter", Boolean.parseBoolean(hasBirthCenter))
-                .build();
-
-        // Multi-context: LD evaluates targeting rules against BOTH contexts.
-        // This is the enterprise pattern — org-level entitlements + user-level targeting.
-        LDContext multiCtx = LDContext.createMulti(userCtx, orgCtx);
-
-        boolean enabled = ldClient.boolVariation("helix-maternity-pathway", multiCtx, false);
+        // intVariation reads the current value of the Number flag. The default,
+        // 140, is used if the flag is missing or LaunchDarkly is unreachable.
+        int threshold = ldClient.intVariation("helix-bp-alert-threshold", ctx, 140);
+        boolean alert = value >= threshold;
 
         return Map.of(
-                "flag", "helix-maternity-pathway",
-                "enabled", enabled,
-                "userContext", Map.of(
-                        "key", userId,
-                        "role", role,
-                        "department", department
-                ),
-                "orgContext", Map.of(
-                        "key", orgId,
-                        "plan", orgPlan,
-                        "hasBirthCenter", hasBirthCenter
-                )
-        );
-    }
-
-    /**
-     * POST /track-event
-     *
-     * Body (JSON):
-     *   userId     — context key
-     *   eventName  — custom metric name (must match the metric key in LD Experimentation)
-     *   value      — optional numeric value (e.g. time-on-feature in seconds)
-     *
-     * To use this for Experimentation:
-     *   1. Create a metric in LD Experimentation → "maternity-pathway-engaged"
-     *   2. Attach it to an experiment on helix-maternity-pathway
-     *   3. POST to this endpoint when a provider engages with the feature
-     *   4. LD attributes the event to the correct flag variation automatically
-     */
-    @PostMapping("/track-event")
-    public Map<String, Object> trackEvent(@RequestBody Map<String, Object> body) {
-        String userId = (String) body.getOrDefault("userId", "anonymous");
-        String eventName = (String) body.getOrDefault("eventName", "maternity-pathway-engaged");
-        double value = body.containsKey("value")
-                ? Double.parseDouble(body.get("value").toString())
-                : 1.0;
-
-        LDContext ctx = LDContext.builder(userId).build();
-
-        // Track a custom numeric metric event.
-        // Replace "maternity-pathway-engaged" with your metric key from LD Experimentation.
-        ldClient.trackMetric(eventName, ctx, value);
-
-        return Map.of(
-                "tracked", true,
-                "event", eventName,
-                "userId", userId,
-                "value", value
+                "flag", "helix-bp-alert-threshold",
+                "value", value,
+                "threshold", threshold,
+                "alert", alert
         );
     }
 

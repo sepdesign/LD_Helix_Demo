@@ -94,10 +94,17 @@
 
     /* Code */
     .reveal pre {
-      font-size: 0.5em; box-shadow: none;
+      font-size: 0.5em; box-shadow: none; width: 100%;
       border: 1px solid var(--card-border); border-radius: 8px; margin: 6px 0;
     }
     .reveal code { font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; }
+    /* Code blocks must fit the slide naturally: wrap long lines so there is no
+       HORIZONTAL scrollbar, and show the whole block (no height cap) so there is
+       no VERTICAL scrollbar. Keep samples short enough to fit (see slides below). */
+    .reveal pre code {
+      white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+      max-height: none; overflow: visible; padding: 0.8em 1em;
+    }
 
     /* Tables */
     .reveal table  { font-size: 0.57em; width: 100%; }
@@ -105,7 +112,7 @@
     .reveal table td { padding: 8px 13px; border-bottom: 1px solid var(--card-border); }
 
     /* Personas */
-    .personas { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 14px; }
+    .personas { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 14px; }
     .persona {
       background: var(--card-bg); border: 1px solid var(--card-border);
       border-radius: 10px; padding: 14px; font-size: 0.48em; text-align: center;
@@ -170,12 +177,11 @@
     <span class="tag">Go SDK</span>
     <span class="tag">Java SDK</span>
     <span class="tag blue">AI Config</span>
-    <span class="tag blue">Experimentation</span>
   </div>
   <h1>Helix Health Group</h1>
   <h3 style="color:var(--helix-light);font-size:1em;margin-top:8px;">
     LaunchDarkly in Production:<br>
-    Release &nbsp;·&nbsp; Target &nbsp;·&nbsp; Experiment &nbsp;·&nbsp; AI Config
+    Release &nbsp;·&nbsp; Target &nbsp;·&nbsp; Alerts &nbsp;·&nbsp; AI Config
   </h3>
   <p style="margin-top:40px;font-size:0.44em;color:#475569;">
     Solutions Engineering Demo &nbsp;·&nbsp; 2025 &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -184,7 +190,7 @@
     <kbd style="background:#1e293b;padding:2px 6px;border-radius:4px;font-size:1em;">?</kbd> help
   </p>
   <aside class="notes">
-    Welcome. Today I'm walking you through how Helix Health Group, a large multi-site hospital system, uses LaunchDarkly to ship faster without increasing risk. We'll cover feature flag release and rollback, context-based targeting, multi-context evaluation, experimentation, and AI Config. All backed by running code across three SDKs: Python, Go, and Java. The demo dashboard is live and we'll interact with a real LaunchDarkly environment throughout.
+    Let me tell you a story about Helix Health Group, a medical group that runs forty-seven hospitals and is building the software that holds its whole network together. Over the next few minutes I'll show you how they use LaunchDarkly to ship that software quickly without ever putting a patient or a provider at risk. Everything you'll see is running live against a real LaunchDarkly environment, so when I toggle a flag, it's genuinely changing in the dashboard right in front of you. If you'd like to read along, you can press S for these speaker notes or F for fullscreen.
   </aside>
 </section>
 
@@ -213,12 +219,12 @@
       <p>Revamping the maternity care pathway across all 47 hospitals and dedicated birth centers serving 40k daily encounters.</p>
     </div>
     <div class="card">
-      <h4>Analytics Team</h4>
-      <p>Running experiments to measure the impact of new clinical workflows on provider engagement and patient outcomes.</p>
+      <h4>Patient Safety Team</h4>
+      <p>Tuning clinical alert thresholds — like the blood-pressure cut-off that screens for preeclampsia — from the dashboard, so the care team adjusts them as guidelines change with no engineering ticket.</p>
     </div>
   </div>
   <aside class="notes">
-    Helix is a complex enterprise. Three teams shipping simultaneously against the same clinical platform. Different risk profiles, different user bases. The Clinical AI team is touching billing; wrong codes mean denied claims. Patient Access is touching a workflow 40,000 users see every day. Analytics needs clean data to make decisions. LaunchDarkly is the connective tissue that lets all three teams ship independently without stepping on each other.
+    So who is Helix? Picture forty-seven hospitals across twelve states, six thousand providers, and more than forty thousand patient encounters every single day, everything from Level I trauma centers to dedicated birth centers. Three different engineering teams build on this one platform at the same time, and each of them lives with a very different kind of risk. The Clinical AI team is shipping automated billing, where a single wrong ICD-10 code means a denied claim. The Patient Access team is rolling out a new maternity care pathway that forty thousand encounters a day will touch. And the patient safety team owns clinical alert thresholds that have to change as guidelines evolve, without a deployment every single time. What they all need is the freedom to release and adjust on their own schedule, without waiting on or breaking each other.
   </aside>
 </section>
 
@@ -229,7 +235,7 @@
 <section data-background="#0f172a">
   <blockquote style="font-size:1.15em;line-height:1.55;margin-bottom:28px;">
     "Executive leadership is pressuring teams to turn out features faster.
-    Quality must remain high — <em>lives are on the line</em>.
+    Quality must remain high as <em>lives are on the line</em>.
     How do you ship faster without increasing risk?"
   </blockquote>
   <div class="cards cards-2">
@@ -246,7 +252,7 @@
     </div>
   </div>
   <aside class="notes">
-    This is the core tension in clinical software development. The old model couples deployment and release: ship the code and the feature goes live simultaneously. If something goes wrong, you're scrambling. LaunchDarkly breaks that coupling. Code goes to production whenever it's ready. The feature activates only when you choose. And if something goes wrong, you turn it off in seconds with no deployment needed.
+    Here's the tension every one of these teams feels. Leadership wants features out the door faster, but remember, these are hospitals, and lives are genuinely on the line, so quality simply cannot slip. In the old world, deploying code and releasing a feature were the same single act, which means a bug in production turns into a frantic hotfix, a rollback pull request, and an outage window, and at forty thousand encounters a day every minute of that is enormously expensive. LaunchDarkly's whole premise is to break the link between deploying and releasing, and that is what the rest of this story is really about.
   </aside>
 </section>
 
@@ -274,7 +280,7 @@
     This is how Helix ships at speed, without increasing risk to providers or patients.
   </div>
   <aside class="notes">
-    Deployment is a technical event: when code goes to a server. Release is a business decision: when users see the feature. LaunchDarkly lets you separate them completely. You can deploy every day, multiple times a day, with zero new features going live until you choose. Then release on your schedule, to the right users, with an instant rollback path always available.
+    The idea is simple to say and surprisingly powerful in practice: separate deployment from release. Deploying code becomes a quiet technical event, because the feature ships to production wrapped in a flag that's switched off, so nobody sees it yet. Releasing then becomes a business decision you make later, on your own terms: turn it on for your internal testers, then one department, then every hospital, all from the dashboard. And if something goes wrong, rolling back is just flipping that same switch off, so the old experience is back in under a second, with no hotfix and no outage window.
   </aside>
 </section>
 
@@ -311,8 +317,8 @@
         <div style="color:var(--ld-light);margin-bottom:7px;font-size:.88em;">↕ REST</div>
         <div class="arch-svc" style="background:rgba(239,68,68,.2);border:1px solid var(--red);">
           <div style="color:white;font-weight:700;font-size:1.05em;">Java :8002</div>
-          <div style="color:var(--muted);font-size:.88em;">Multi-Context</div>
-          <div style="color:var(--muted);font-size:.82em;">Experimentation</div>
+          <div style="color:var(--muted);font-size:.88em;">Part 3 · Alerts</div>
+          <div style="color:var(--muted);font-size:.82em;">intVariation (Number flag)</div>
         </div>
       </div>
     </div>
@@ -321,13 +327,13 @@
     </div>
   </div>
   <aside class="notes">
-    Single-file frontend, no build step. Open index.html in Chrome. Three backend services, each demonstrating a different LD capability. Python handles the release demo and AI Config, and streams flag changes to the browser via Server-Sent Events. Go handles the targeting demo and returns evaluation reasons. Java shows multi-context evaluation and sends experimentation events. All three SDKs connect to the same LD project.
+    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project: a Python service that owns Part 1 and the AI Config work and streams flag changes out to the browser, a Go service that handles the Part 2 targeting, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags drive all of them, identically.
   </aside>
 </section>
 
 
 <!-- ══════════════════════════════════════════
-     SECTION DIVIDER — PART 1
+     SECTION DIVIDER: PART 1
 ══════════════════════════════════════════ -->
 <section class="section-bg">
   <div class="part">Part 1</div>
@@ -337,7 +343,7 @@
     Flag: <code>helix-auto-scribe</code> &nbsp;·&nbsp; Type: Boolean &nbsp;·&nbsp; SDK: Python
   </div>
   <aside class="notes">
-    Part 1. The Clinical AI team is shipping their new AI transcription feature. Let's walk through how they release it safely and how they roll it back instantly when something goes wrong.
+    Let's start with the Clinical AI team and their highest-stakes feature. They want to ship an AI auto-scribe that turns a doctor's encounter notes into billing codes automatically. It's enormously useful, but it touches claims revenue directly, so it's exactly the kind of feature you want to release carefully and be able to pull back the instant anything looks wrong. The flag is called helix-auto-scribe, it's a simple on-off boolean, and it's evaluated by the Python service.
   </aside>
 </section>
 
@@ -350,44 +356,35 @@
   <h2>helix-auto-scribe</h2>
   <div class="cols">
     <div>
-      <div class="callout red">
+      <div class="callout red" style="font-size:0.56em;">
         <strong>Before: Manual clinical coding</strong><br><br>
         ▸ 20+ minutes per encounter<br>
         ▸ ICD-10 + CPT codes selected by hand<br>
-        ▸ Billing errors = denied claims<br>
-        ▸ Cognitive load on every provider
+        ▸ Billing errors = denied claims
       </div>
-      <div class="callout green" style="margin-top:10px;">
+      <div class="callout green" style="margin-top:10px;font-size:0.56em;">
         <strong>After: AI-powered transcription</strong><br><br>
         ▸ Seconds per encounter<br>
-        ▸ Claude extracts diagnosis + procedure codes<br>
-        ▸ Provider reviews, not coding from scratch<br>
-        ▸ Consistent, auditable outputs
+        ▸ Claude extracts diagnosis + codes<br>
+        ▸ Provider reviews instead of coding
       </div>
     </div>
     <div>
-      <pre><code class="python"># The entire feature is wrapped
-# in a single flag evaluation
-
+      <pre style="font-size:0.4em;"><code class="python"># The whole feature is wrapped in one flag check
 context = Context.builder(user_key)\
-    .set("department", department)\
-    .set("role", role)\
-    .build()
+    .set("department", department).build()
 
 enabled = ld.bool_variation(
-    "helix-auto-scribe",
-    context,
-    False        # safe default: off
-)
+    "helix-auto-scribe", context, False)  # default off
 
 if enabled:
-    show_ai_scribe_panel()   # new path
+    show_ai_scribe_panel()    # new path
 else:
     show_manual_coding_form() # old path</code></pre>
     </div>
   </div>
   <aside class="notes">
-    The AI auto-scribe feature takes a clinical encounter transcript and returns structured ICD-10 diagnosis codes and CPT procedure codes using Anthropic's Claude. The entire feature is wrapped in a flag. In production right now, all providers see the manual coding workflow. The AI panel only appears when the flag is on. The code is already deployed. It's just dark.
+    Here's the before and after. Today a provider spends twenty-plus minutes per encounter picking ICD-10 and CPT codes by hand, and every mistake becomes a denied claim. With auto-scribe, the transcript goes in and the model returns the codes in seconds, with the provider reviewing them instead of coding from scratch. The part that matters most for our story is on the right: the entire feature is wrapped in a single flag check. The code is already deployed to production right now; it's just that the flag is off, so every provider still sees the old manual form. Nobody even knows the new feature is there yet.
   </aside>
 </section>
 
@@ -401,39 +398,28 @@ else:
   <p style="font-size:0.58em;color:var(--muted);">When the flag changes in the LD dashboard, every connected browser knows in under one second.</p>
   <div class="cols" style="margin-top:10px;">
     <div>
-      <pre><code class="python"># Python — register a flag change listener
-def _on_flag_change(event):
+      <pre><code class="python"># Python: register a flag-change listener
+def on_change(event):
     payload = json.dumps({
         "flag": "helix-auto-scribe",
-        "value": event.current_value
+        "value": event.current_value,
     })
-    for q in _sse_queues:
-        loop.call_soon_threadsafe(
-            q.put_nowait, payload
-        )
+    for q in _sse_queues:        # fan out
+        q.put_nowait(payload)
 
-ld.get_flag_tracker()\
+ld.get_flag_tracker() \
   .add_flag_value_change_listener(
-    "helix-auto-scribe",
-    system_ctx,
-    _on_flag_change   # fires on change
-)</code></pre>
+    "helix-auto-scribe", ctx, on_change)</code></pre>
     </div>
     <div>
-      <pre><code class="javascript">// Browser — EventSource (SSE)
+      <pre><code class="javascript">// Browser: EventSource (SSE)
 const es = new EventSource(
-  "http://localhost:8000/events"
-);
+  "http://localhost:8000/events");
 
 es.onmessage = (e) => {
-  const { flag, value } =
-    JSON.parse(e.data);
-
-  if (flag === "helix-auto-scribe") {
-    // No page reload — panel
-    // appears or hides instantly
-    panel.hidden = !value;
-  }
+  const { flag, value } = JSON.parse(e.data);
+  if (flag === "helix-auto-scribe")
+    panel.hidden = !value;   // no reload
 };</code></pre>
       <div class="callout blue" style="font-size:0.82em;margin-top:8px;">
         LD SDK fires a server-side callback → asyncio queue → SSE stream → browser reacts.
@@ -441,7 +427,7 @@ es.onmessage = (e) => {
     </div>
   </div>
   <aside class="notes">
-    This is one of the most visually compelling parts of the demo. The LD server-side SDK maintains a persistent streaming connection to LaunchDarkly. When the flag changes, it fires a Python callback on the server. We push that onto an asyncio queue. The FastAPI SSE endpoint streams that queue to every connected browser. Toggle the flag → browser updates in under a second, with no page refresh.
+    Now, how does the feature appear the very moment we flip the flag, without anyone refreshing their browser? On the server side, the LaunchDarkly SDK holds a streaming connection open to LaunchDarkly and fires a callback within milliseconds of any change. We catch that callback and push it straight out to the browser over Server-Sent Events. The browser is already listening on that stream, so when the value flips, the panel simply appears or disappears on its own. No polling, no reload, under a second from end to end.
   </aside>
 </section>
 
@@ -454,13 +440,12 @@ es.onmessage = (e) => {
   <h2>Releasing helix-auto-scribe</h2>
   <div class="demo">
     <ol>
-      <li>Observe: badge in top-right shows <span class="badge badge-off">● OFF</span></li>
+      <li>Observe: badge shows <span class="badge badge-off">● OFF</span>, and the screen shows the tedious <strong>manual coding workflow</strong> (the status quo)</li>
       <li>Open LaunchDarkly → <strong>helix-auto-scribe</strong> → toggle <strong>ON</strong></li>
-      <li>Watch the AI Auto-Scribe panel appear in the browser (<em>no page reload</em>)</li>
-      <li>Select department: <strong>Emergency Department</strong></li>
-      <li>Click <strong>Load Sample</strong> to populate a clinical encounter transcript</li>
+      <li>Watch the manual form get replaced by the AI Auto-Scribe panel (<em>no page reload</em>)</li>
+      <li>Leave department on <strong>Emergency Department</strong> — a sample ED transcript is pre-filled</li>
       <li>Click <strong>Generate Billing Codes</strong></li>
-      <li>Claude returns: diagnosis, ICD-10 codes, CPT codes, complexity, coding notes</li>
+      <li>The model returns: diagnosis, ICD-10 codes, CPT codes, complexity, and coding notes</li>
     </ol>
   </div>
   <div class="callout green" style="font-size:0.63em;margin-top:4px;">
@@ -468,7 +453,7 @@ es.onmessage = (e) => {
     No deployment was required. No service restart. No configuration push.
   </div>
   <aside class="notes">
-    Demo time. The badge should be red/OFF. Go to the LD dashboard, find helix-auto-scribe, toggle it on. Watch the panel appear in the browser immediately with no reload. Select ED, load a sample encounter, generate billing codes. Claude returns a structured JSON: diagnosis, ICD-10 codes, CPT codes, complexity level, and coding rationale. The whole AI interaction takes 2-3 seconds. Switch to OB department and show how the model and prompt change; that's the AI Config portion, which we'll cover later.
+    Let's actually do it. Right now the badge in the corner reads OFF. I'll go into LaunchDarkly, find helix-auto-scribe, and toggle it on, and watch, the panel appears here on its own with no refresh. From there I'll leave it on the Emergency Department, where a sample encounter is already filled in, and click Generate Billing Codes; the model returns the diagnosis, the ICD-10 and CPT codes, and a short rationale in a couple of seconds. If you want, I can switch the department to Obstetrics and load that sample to preview the AI Config piece we'll get to shortly. And just like that, all six thousand providers can use AI-assisted coding, with no deployment, no restart, and nothing pushed.
   </aside>
 </section>
 
@@ -479,52 +464,37 @@ es.onmessage = (e) => {
 <section>
   <div class="part">Part 1: Remediate</div>
   <h2>Something Went Wrong</h2>
-  <div class="callout red" style="font-size:0.68em;margin-bottom:16px;">
-    <strong>Incident:</strong> The AI is generating CPT 99285 (high-complexity E&amp;M) for routine visits.
-    Claims are being over-coded. Compliance has flagged it. Every additional minute of exposure increases liability.
+  <div class="callout red" style="font-size:0.6em;margin-bottom:12px;">
+    <strong>Incident:</strong> the AI is over-coding routine visits as high-complexity (CPT 99285). Compliance flagged it — every minute of exposure is liability.
   </div>
-  <div class="cols">
-    <div>
-      <h3>Option A: Manual toggle</h3>
-      <p style="font-size:0.56em;color:var(--muted);">LD dashboard → helix-auto-scribe → OFF.<br>Takes under 10 seconds.</p>
-
-      <h3 style="margin-top:14px;">Option B: Flag trigger (automated)</h3>
-      <p style="font-size:0.56em;color:var(--muted);">LD generates a webhook URL for the flag.<br>POST to it from any monitoring system (or via curl).</p>
-      <pre style="margin-top:8px;"><code class="bash">curl -X POST \
-  "https://app.launchdarkly.com/\
-api/v1/flags/triggers/YOUR_URL"</code></pre>
-    </div>
-    <div>
-      <div class="callout green" style="font-size:0.65em;">
-        <strong>Result:</strong><br><br>
-        Flag is off. Providers see the manual workflow.
-        No deployment. No rollback PR. No hotfix branch.
-        No outage window. Incident resolved in seconds.
-      </div>
-      <div class="callout blue" style="margin-top:10px;font-size:0.6em;">
-        Wire this trigger URL into PagerDuty, Datadog, or any monitoring tool
-        for fully automated rollback on alert.
-      </div>
-    </div>
+  <div class="callout" style="font-size:0.6em;margin-bottom:10px;">
+    <strong>Option A — Dashboard:</strong> toggle <code>helix-auto-scribe</code> OFF (~10s). &nbsp;·&nbsp; <strong>Option B — REST API:</strong> one semantic-patch call — curl, Postman, or your monitoring tool.
+  </div>
+  <pre style="font-size:0.46em;"><code class="bash">curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" \
+  -H "Authorization: $LD_API_TOKEN" \
+  -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" \
+  -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code></pre>
+  <div class="callout green" style="font-size:0.6em;margin-top:12px;">
+    <strong>Result:</strong> flag off, providers back on the manual workflow — no deployment, no rollback PR, no outage. Resolved in seconds. Wire the call into PagerDuty or Datadog for automated rollback on alert.
   </div>
   <aside class="notes">
-    This is the "oh no" moment. In the old world, you're scrambling: hotfix branch, code review, deploy, coordinate with DevOps, wake up on-call, update the runbook. With LaunchDarkly, you toggle the flag off. The Remediate card in the demo dashboard has a curl command. Run it and watch the panel disappear instantly. In production, you'd wire this trigger URL to your monitoring system for automatic rollback when an alert fires. The flag is your safety net.
+    But this is healthcare, so let's talk about what happens when it goes wrong. Imagine compliance discovers the AI is over-coding, billing routine visits as high-complexity, and every extra minute it stays live is a growing liability. In the old world this is a fire drill. Here I have two easy options. I can flip the flag off in the dashboard in about ten seconds, or I can do it from a script, one REST call from curl, from Postman, or even straight from a monitoring tool like Datadog or PagerDuty, so the rollback happens automatically the instant an alert fires. Either way the feature is gone in seconds, providers are back on the safe manual workflow, and there was no hotfix, no rollback pull request, and no outage window.
   </aside>
 </section>
 
 
 <!-- ══════════════════════════════════════════
-     SECTION DIVIDER — PART 2
+     SECTION DIVIDER: PART 2
 ══════════════════════════════════════════ -->
 <section class="section-bg">
   <div class="part">Part 2</div>
   <h2>Target</h2>
-  <p style="color:var(--muted);font-size:0.68em;">Surgical precision: the right feature, the right provider, the right hospital</p>
+  <p style="color:var(--muted);font-size:0.68em;">Show the new Maternity Care Pathway to the right clinicians — by one simple rule</p>
   <div class="callout" style="margin-top:26px;">
     Flag: <code>helix-maternity-pathway</code> &nbsp;·&nbsp; Type: Boolean + Targeting &nbsp;·&nbsp; SDK: Go
   </div>
   <aside class="notes">
-    Part 2. The Patient Access team is shipping the new maternity pathway. They can't just flip it on for all 40,000 users at once. They need surgical precision: specific providers, specific departments, specific hospitals. This is where LaunchDarkly's targeting engine comes in.
+    Part 1 was about whether a feature is on. Part 2 is about who gets to see it. So let's switch over to the Patient Access team, who are rolling out a brand-new Maternity Care Pathway. They don't want to flip it on for all forty thousand encounters at once; they want the right clinicians to get it first. The flag is helix-maternity-pathway, and this time it's evaluated by the Go service.
   </aside>
 </section>
 
@@ -534,26 +504,29 @@ api/v1/flags/triggers/YOUR_URL"</code></pre>
 ══════════════════════════════════════════ -->
 <section>
   <div class="part">Part 2: Target</div>
-  <h2>Not All Users Are Equal</h2>
-  <div class="cards cards-3" style="margin-top:18px;">
-    <div class="card">
-      <h4>Beta Providers</h4>
-      <p>Dr. Chen and Mary Johnson are on the beta team. They get the feature regardless of hospital or department.</p>
+  <h2>The Maternity Care Pathway</h2>
+  <p style="font-size:0.58em;color:var(--muted);">A new clinical module. Same app, two experiences — LaunchDarkly decides which one each clinician gets.</p>
+  <div class="cols" style="margin-top:14px;">
+    <div class="callout green" style="font-size:0.6em;">
+      <strong>✓ Maternity staff see the Pathway</strong><br><br>
+      ▸ Patient header: G2P1, 39w2d<br>
+      ▸ Stage tracker: Prenatal → Triage → <strong>L&amp;D</strong> → Postpartum<br>
+      ▸ Care plan &amp; history: GBS+, recommended orders<br>
+      ▸ Active-labor order set · continuous fetal monitoring
     </div>
-    <div class="card">
-      <h4>Maternity Specialists</h4>
-      <p>Attending physicians and charge nurses in maternity departments should get access as the rollout expands to that specialty.</p>
-    </div>
-    <div class="card">
-      <h4>Capable Hospitals</h4>
-      <p>Level I trauma centers with dedicated birth centers should unlock access, even if their individual providers don't match specialty rules.</p>
+    <div class="callout" style="font-size:0.6em;">
+      <strong>Everyone else sees the standard chart</strong><br><br>
+      ▸ Patient header + vitals only<br>
+      ▸ "Maternity Care Pathway not enabled"<br>
+      ▸ No new workflow, no exposure, no risk<br>
+      ▸ Same application, same code path
     </div>
   </div>
-  <div class="callout blue" style="margin-top:14px;font-size:0.63em;">
-    All of this targeting is configured in the LaunchDarkly dashboard. Zero code changes required for each rollout stage.
+  <div class="callout blue" style="margin-top:14px;font-size:0.62em;">
+    The interviewer's question — "what are we actually accessing?" — answered on screen: a real clinical module appears, or it doesn't.
   </div>
   <aside class="notes">
-    The Patient Access team has a multi-stage rollout. Start with the beta team: two named providers. Expand to maternity specialists by department and role. Then open it to hospitals based on their capabilities. Every one of these stages is a dashboard change, not a code change. The engineering team doesn't need to be involved for each rollout decision.
+    Here's what we're actually rolling out, because the fair question is always "okay, but what does the user get?" For maternity staff, the patient chart becomes a real Maternity Care Pathway module: a guided labor-and-delivery workflow with a stage tracker, the care plan and history, and the right order sets. For everyone else, the exact same application shows the plain standard chart they already use, with a small note that the pathway isn't enabled for them. Same code, two completely different experiences, and LaunchDarkly is the thing deciding which one each clinician sees. The best part is you'll watch that chart actually change, live, in the demo.
   </aside>
 </section>
 
@@ -563,44 +536,20 @@ api/v1/flags/triggers/YOUR_URL"</code></pre>
 ══════════════════════════════════════════ -->
 <section>
   <div class="part">Part 2: Target</div>
-  <h2>Context Attributes</h2>
-  <p style="font-size:0.58em;color:var(--muted);">Contexts carry the attributes LaunchDarkly uses when evaluating targeting rules.</p>
-  <div class="cols" style="margin-top:14px;">
-    <pre><code class="go">// Go — build the evaluation context
-ctx := ldcontext.NewBuilder(userID).
-    SetString("department",   department).
-    SetString("role",         role).
-    SetString("hospitalTier", hospitalTier).
-    SetBool("hasBirthCenter", hasBirthCenter).
-    Build()
-
-// BoolVariationDetail returns value + reason
-detail, _ := ldClient.BoolVariationDetail(
-    "helix-maternity-pathway",
-    ctx,
-    false, // default
-)
-
-// detail.Value       — true / false
-// detail.Reason.Kind — TARGET_MATCH
-//                    — RULE_MATCH
-//                    — FALLTHROUGH</code></pre>
-    <div>
-      <div class="callout" style="font-size:0.72em;">
-        <strong>Attributes on the context:</strong><br><br>
-        <code>userId</code>: provider key (email)<br>
-        <code>department</code>: maternity | ed | icu<br>
-        <code>role</code>: attending | charge_nurse<br>
-        <code>hospitalTier</code>: level1 | level2<br>
-        <code>hasBirthCenter</code>: true | false
-      </div>
-      <div class="callout blue" style="margin-top:10px;font-size:0.67em;">
-        <code>BoolVariationDetail</code> returns the flag value <em>and</em> the reason, so you can surface exactly which targeting rule matched in your UI.
-      </div>
-    </div>
+  <h2>One Rule Decides Who's In</h2>
+  <table style="margin-top:18px;">
+    <tr><th>Type</th><th>Condition</th><th>Result</th></tr>
+    <tr><td>Rule</td><td><code>department is one of</code> &nbsp;<code>maternity</code></td><td><span class="badge badge-on">true</span></td></tr>
+    <tr><td>Default</td><td>everyone else</td><td><span class="badge badge-off">false</span></td></tr>
+  </table>
+  <div class="callout blue" style="margin-top:18px;font-size:0.62em;">
+    One attribute, one rule — easy to explain, easy to trust. Expanding the rollout is a dashboard edit to this rule: add <code>emergency</code>, pilot a single provider by email, or gate by hospital tier. No code change, no deploy.
+  </div>
+  <div class="callout" style="margin-top:10px;font-size:0.56em;color:var(--muted);">
+    Targeting can get as granular as you want — individual targets, compound rules, percentage rollouts. We start with one rule so the story stays clear.
   </div>
   <aside class="notes">
-    The context is the "who" in every flag evaluation. We're sending five attributes. The Go service uses BoolVariationDetail instead of BoolVariation, which gives us the evaluation reason alongside the value. We surface this reason in the demo UI so you can see in real-time which targeting rule is responsible for each outcome.
+    And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls through to off. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
   </aside>
 </section>
 
@@ -610,22 +559,33 @@ detail, _ := ldClient.BoolVariationDetail(
 ══════════════════════════════════════════ -->
 <section>
   <div class="part">Part 2: Target</div>
-  <h2>Individual + Rule-Based Targeting</h2>
-  <table style="margin-top:14px;">
-    <tr><th>Priority</th><th>Type</th><th>Condition</th><th>Result</th></tr>
-    <tr><td>1</td><td>Individual</td><td><code>dr.chen@helixhealth.org</code></td><td><span class="badge badge-on">true</span></td></tr>
-    <tr><td>2</td><td>Individual</td><td><code>mary.johnson@helixhealth.org</code></td><td><span class="badge badge-on">true</span></td></tr>
-    <tr><td>3</td><td>Rule</td><td><code>department = maternity</code> AND <code>role = attending</code></td><td><span class="badge badge-on">true</span></td></tr>
-    <tr><td>4</td><td>Rule</td><td><code>department = maternity</code> AND <code>role = charge_nurse</code></td><td><span class="badge badge-on">true</span></td></tr>
-    <tr><td>5</td><td>Rule</td><td><code>hospitalTier = level1</code> AND <code>hasBirthCenter = true</code></td><td><span class="badge badge-on">true</span></td></tr>
-    <tr><td>Default</td><td>Fallthrough</td><td>(all others)</td><td><span class="badge badge-off">false</span></td></tr>
-  </table>
-  <p style="font-size:0.53em;color:var(--muted);margin-top:14px;">
-    Individual targets always evaluate first. Rules evaluate in order; first match wins.
-    No code changes required to add, reorder, or remove rules.
-  </p>
+  <h2>How the Go SDK Evaluates It</h2>
+  <div class="cols" style="margin-top:14px;">
+    <pre style="font-size:0.4em;"><code class="go">// Build a context for this clinician
+ctx := ldcontext.NewBuilder(userID).
+    SetString("department", department).
+    SetString("role", role).Build()
+
+// Evaluate the flag — value AND reason
+detail, _ := ldClient.BoolVariationDetail(
+    "helix-maternity-pathway", ctx, false)
+
+if detail.Value {
+    renderMaternityPathway()  // new module
+} else {
+    renderStandardChart()     // everyone else
+}</code></pre>
+    <div>
+      <div class="callout" style="font-size:0.64em;">
+        Same one-flag pattern as Part 1, server-side in Go. The context carries <code>department</code> (plus any extra attributes you want along for the ride); LD checks it against the rule and answers for <em>this</em> clinician.
+      </div>
+      <div class="callout blue" style="margin-top:10px;font-size:0.6em;">
+        <code>BoolVariationDetail</code> also returns the <em>reason</em> — <code>RULE_MATCH</code> / <code>FALLTHROUGH</code> — so you can answer "why did this user see this?" It's shown in the demo's evaluation-detail drawer.
+      </div>
+    </div>
+  </div>
   <aside class="notes">
-    Individual targets come first, always. Dr. Chen and Mary Johnson are on the beta team; they get the feature regardless of any other attribute. Then rules cascade. Rule 3 catches maternity attendings. Rule 4 catches charge nurses. Rule 5 catches Level I hospitals with birth centers, even if the individual provider doesn't match specialty rules. Everyone else hits the default fallthrough and gets false. The product team can adjust any of these rules without engineering involvement.
+    Under the hood it's the same one-flag pattern as Part 1, just written in Go this time. We build a context describing the clinician, really just their department, and ask LaunchDarkly to evaluate the flag for them. If it comes back true we render the pathway, otherwise the standard chart. One detail I love: the SDK doesn't only tell us the answer, it tells us the reason, RULE_MATCH or FALLTHROUGH, which we surface in the demo so you can always answer the question "why did this person see this?". And notice the default is false, so if LaunchDarkly were ever unreachable, every clinician safely falls back to the standard chart.
   </aside>
 </section>
 
@@ -635,149 +595,71 @@ detail, _ := ldClient.BoolVariationDetail(
 ══════════════════════════════════════════ -->
 <section>
   <div class="part">Part 2: DEMO</div>
-  <h2>Evaluation Reasons in Action</h2>
+  <h2>Same App, Different Clinician</h2>
   <div class="personas" style="margin-top:18px;">
     <div class="persona">
-      <div class="name">Dr. Chen</div>
-      <div class="role">Maternity · Attending<br>Individual target (beta)</div>
-      <div class="result tm">TARGET_MATCH</div>
+      <div class="name">Dr. Alvarez</div>
+      <div class="role">Maternity · OB Attending</div>
+      <div class="result rm">Sees the Pathway</div>
     </div>
     <div class="persona">
-      <div class="name">Dr. Patel</div>
-      <div class="role">Maternity · Attending<br>Rule 3 match</div>
-      <div class="result rm">RULE_MATCH</div>
+      <div class="name">Grace Liu, RN</div>
+      <div class="role">Maternity · Charge Nurse</div>
+      <div class="result rm">Sees the Pathway</div>
     </div>
     <div class="persona">
-      <div class="name">Northwest Medical</div>
-      <div class="role">Level I · Birth Center<br>Rule 5 match</div>
-      <div class="result rm">RULE_MATCH</div>
-    </div>
-    <div class="persona">
-      <div class="name">Nurse Kim</div>
-      <div class="role">ICU · Floor Nurse<br>No rule matches</div>
-      <div class="result ft">FALLTHROUGH</div>
+      <div class="name">Dr. Reed</div>
+      <div class="role">Emergency · ED Attending</div>
+      <div class="result ft">Standard chart</div>
     </div>
   </div>
-  <div class="callout blue" style="margin-top:18px;font-size:0.62em;">
-    Click each persona card in the demo to call the Go service live. The evaluation reason is returned by the SDK and shown in the UI in real time.
+  <div class="callout green" style="margin-top:18px;font-size:0.6em;">
+    Click a clinician → the Go service evaluates the flag live → the patient chart re-renders. Two maternity staff (different roles) both get the Pathway; the ER doctor gets the standard chart. Expand <em>evaluation detail</em> for the SDK reason.
   </div>
   <aside class="notes">
-    The demo dashboard has four persona cards. Click Dr. Chen: individual target, TARGET_MATCH. Dr. Patel hits Rule 3 as a maternity attending: RULE_MATCH. Northwest Medical hits Rule 5 by hospital tier: RULE_MATCH. Nurse Kim is ICU, not maternity, no birth center: FALLTHROUGH, gets false. The Go service returns the reason in the API response and the UI displays it. This is exactly what a real LD evaluation looks like at runtime.
+    Let's see it. I'll click Dr. Alvarez, a maternity attending, and the pathway module renders. Then Grace Liu, a maternity charge nurse, and it's the same pathway, because it's the department that matters, not the person or the exact role. Then Dr. Reed over in the Emergency department, and he drops back to the standard chart, because no rule matched him. If you want the proof, I'll expand the evaluation detail and you'll see the real SDK reason for each one. And if I decided Dr. Reed should be included, I'd just edit that one rule in the dashboard and click him again, with no redeploy.
   </aside>
 </section>
 
 
 <!-- ══════════════════════════════════════════
-     SLIDE 16  MULTI-CONTEXT (JAVA)
+     SLIDE 16  PART 3: CONFIG-DRIVEN ALERT (JAVA)
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">Multi-Context: Java</div>
-  <h2>Evaluate Multiple Contexts Simultaneously</h2>
-  <p style="font-size:0.58em;color:var(--muted);">A provider's access can depend on who <em>they</em> are AND what <em>organization</em> they belong to.</p>
+  <div class="part">Part 3: Java SDK</div>
+  <h2>Configuration, Not Just On/Off</h2>
+  <p style="font-size:0.58em;color:var(--muted);">A flag can carry a value, not only a switch. A developer builds the alert; the clinical team owns the threshold from the dashboard.</p>
   <div class="cols" style="margin-top:12px;">
-    <pre><code class="java">// User context — the individual provider
-LDContext userCtx = LDContext
-    .builder(ContextKind.of("user"), userId)
-    .set("role", role)
-    .set("department", department)
-    .build();
+    <pre style="font-size:0.4em;"><code class="java">// Alert logic is in code; the THRESHOLD
+// is a LaunchDarkly Number flag
+LDContext ctx = LDContext
+    .builder("helix-clinical-platform").build();
 
-// Organisation context — the hospital
-LDContext orgCtx = LDContext
-    .builder(ContextKind.of("organization"), orgId)
-    .set("plan", orgPlan)         // "enterprise"
-    .set("hasBirthCenter", true)
-    .build();
+int threshold = ldClient.intVariation(
+    "helix-bp-alert-threshold", ctx, 140);
 
-// LD evaluates targeting rules against
-// BOTH contexts simultaneously
-LDContext multi =
-    LDContext.createMulti(userCtx, orgCtx);
-
-boolean enabled = ldClient.boolVariation(
-    "helix-maternity-pathway", multi, false
-);</code></pre>
+boolean alert = reading >= threshold;
+// clinical team re-tunes it in the dashboard</code></pre>
     <div>
-      <div class="callout" style="font-size:0.72em;">
-        <strong>Enterprise pattern:</strong><br><br>
-        Floor nurse at a general hospital<br>
-        → <span class="badge badge-off">false</span><br><br>
-        Same floor nurse at an <em>enterprise-plan</em> hospital with a birth center<br>
-        → <span class="badge badge-on">true</span><br><br>
-        The <em>organization</em> context unlocked what the user context alone couldn't.
+      <div class="callout" style="font-size:0.58em;">
+        <strong>The "wow," in seconds:</strong><br><br>
+        1. Enter <strong>135 mmHg</strong> → <span class="badge badge-on">NORMAL</span> (threshold 140)<br>
+        2. Lower <code>helix-bp-alert-threshold</code> to 130 in LD<br>
+        3. Check 135 again → <span class="badge badge-off">ALERT</span>
+      </div>
+      <div class="callout blue" style="margin-top:10px;font-size:0.56em;">
+        Flags aren't only on/off. A Number (or string, or JSON) flag lets non-engineers tune real behaviour safely, with no deploy.
       </div>
     </div>
   </div>
   <aside class="notes">
-    Multi-context is a powerful enterprise pattern. You're not evaluating against just the individual; you're simultaneously evaluating against the organization they belong to. An enterprise hospital can unlock the maternity pathway for all its providers, even those who wouldn't qualify by role alone. You can write rules targeting organization.plan or user.role, or combine them. This is how B2B SaaS companies do entitlements at scale.
+    There's one more shape a flag can take that people often miss: it doesn't have to be a simple on or off. For Part 3, a developer built a blood-pressure alert, the kind of thing that screens for preeclampsia, but the threshold it fires at isn't baked into the code. It's a LaunchDarkly Number flag that the clinical team owns. Watch: I enter a reading of 135, and against the default threshold of 140 it comes back normal. Now I lower that threshold in the dashboard to 130, check the very same 135 again, and it flips to an alert, with no deploy and no restart; the Java service simply read the new number. The takeaway is that flags aren't only switches. A number, a string, or even a JSON blob can let the people closest to the problem tune real behaviour safely, without an engineering ticket every single time.
   </aside>
 </section>
 
 
 <!-- ══════════════════════════════════════════
-     SECTION DIVIDER — EXPERIMENTATION
-══════════════════════════════════════════ -->
-<section class="section-bg">
-  <div class="part">Extra Credit</div>
-  <h2>Experimentation</h2>
-  <p style="color:var(--muted);font-size:0.68em;">Measuring the impact of the new maternity pathway on provider engagement</p>
-  <div class="callout" style="margin-top:26px;">
-    SDK: Java &nbsp;·&nbsp; Metric: <code>maternity-pathway-engaged</code>
-  </div>
-  <aside class="notes">
-    Experimentation. The Analytics team wants to know: does the new maternity pathway actually change provider behaviour? They need data, not assumptions.
-  </aside>
-</section>
-
-
-<!-- ══════════════════════════════════════════
-     SLIDE 18  EXPERIMENTATION
-══════════════════════════════════════════ -->
-<section>
-  <div class="part">Experimentation</div>
-  <h2>Data-Driven Release Decisions</h2>
-  <div class="cols">
-    <div>
-      <div class="cards" style="gap:10px;">
-        <div class="card">
-          <h4>1. Create a Metric</h4>
-          <p>LD Experimentation → key: <code>maternity-pathway-engaged</code>. This is the conversion event you'll measure across flag variations.</p>
-        </div>
-        <div class="card">
-          <h4>2. Attach to the Flag</h4>
-          <p>Create an experiment on <code>helix-maternity-pathway</code>. LD automatically buckets users into control and treatment groups.</p>
-        </div>
-        <div class="card">
-          <h4>3. Track &amp; Decide</h4>
-          <p>Fire the event when providers engage. LD attributes it to the correct variation. Get statistically significant results, then decide.</p>
-        </div>
-      </div>
-    </div>
-    <div>
-      <pre><code class="java">// Track a conversion event.
-// LD attributes this to the correct
-// flag variation automatically.
-ldClient.trackMetric(
-    "maternity-pathway-engaged",
-    ctx,
-    1.0   // optional numeric value
-);
-
-// Non-blocking — LD buffers
-// and flushes in the background</code></pre>
-      <div class="callout green" style="margin-top:10px;font-size:0.72em;">
-        Get statistically significant results. Roll out to everyone (or roll back) based on evidence, not gut feel.
-      </div>
-    </div>
-  </div>
-  <aside class="notes">
-    The experimentation workflow is elegant. Create a metric, attach it to the flag, and call trackMetric whenever a meaningful action occurs. LD does the attribution: it knows which variation each user was in when they fired the event. After enough data, you get a statistically significant result. Then you make a data-driven decision: roll out to everyone or pull back. No custom analytics pipeline required.
-  </aside>
-</section>
-
-
-<!-- ══════════════════════════════════════════
-     SECTION DIVIDER — AI CONFIG
+     SECTION DIVIDER: AI CONFIG
 ══════════════════════════════════════════ -->
 <section class="section-bg">
   <div class="part">Extra Credit</div>
@@ -787,7 +669,7 @@ ldClient.trackMetric(
     Flag: <code>helix-clinical-ai</code> &nbsp;·&nbsp; Type: AI Config &nbsp;·&nbsp; SDK: Python + LD AI SDK
   </div>
   <aside class="notes">
-    AI Config is the most forward-looking capability in this demo. The Clinical AI team has three different AI personas serving different clinical contexts. Without LaunchDarkly, every prompt change is a deployment. Let's fix that.
+    There's one more thing every health system I talk to is wrestling with right now, and it's a good place to end: how do you manage AI responsibly? Helix runs three different clinical AI personas, and today, every time someone wants to tweak a prompt or change a model, it's a code change and a deployment. LaunchDarkly's AI Config is built for exactly this — the flag is helix-clinical-ai, and it controls the model and the prompt from the dashboard.
   </aside>
 </section>
 
@@ -817,7 +699,7 @@ ldClient.trackMetric(
     </div>
   </div>
   <aside class="notes">
-    In clinical AI, you iterate on prompts constantly. The ED coding prompt needs tuning after a billing audit. The OB prompt needs updates after a clinical accuracy review. With prompts hardcoded in Python, every change is a deployment: code review, test, deploy, monitor. With AI Config, you update the prompt in the dashboard and the next API call uses it. No deploy, no PR, no waiting.
+    Think about what it means to have your AI prompts living in code. The system prompt is just a string constant sitting in main.py. Want to improve it after an accuracy review? That's a pull request, a code review, and a deploy. Want to upgrade the model, or A/B test two prompts, or run three different personas? That's more branches and more code paths to maintain. With AI Config, the model and the prompt move out of the code and into the LaunchDarkly dashboard, so you change them there and the very next API call uses the new version, with no deploy and no waiting on engineering.
   </aside>
 </section>
 
@@ -854,7 +736,7 @@ ldClient.trackMetric(
     Add a new persona or swap a model entirely from the dashboard. No code change required.
   </div>
   <aside class="notes">
-    Three personas, three different clinical needs. ED needs speed: Haiku is fast and cost-efficient for straightforward coding tasks. OB needs thoroughness and accuracy: Sonnet provides more depth for complex obstetric coding. Parent Connect is patient-facing and needs warmth and empathy; also Sonnet, but with a completely different system prompt focused on reassurance and safe guidance.
+    Here are the three personas, and they show why this is more than a convenience. The ED scribe runs on Claude Haiku, because it's fast and inexpensive, which is what you want for straightforward emergency coding. The OB scribe runs on Sonnet, because obstetric coding needs more depth and care. And Parent Connect runs on Sonnet too, but with a completely different, warm, patient-facing prompt. The same department attribute we've used all along routes each request to the right one, and adding a fourth persona or swapping any model is a dashboard change, not a code change.
   </aside>
 </section>
 
@@ -865,38 +747,25 @@ ldClient.trackMetric(
 <section>
   <div class="part">AI Config: Integration</div>
   <h2>One Code Path. Many Configurations.</h2>
-  <pre style="font-size:0.47em;"><code class="python">from ldai.client import LDAIClient, AIConfig
+  <pre style="font-size:0.5em;"><code class="python">from ldai.client import LDAIClient, AIConfig
+ai_client = LDAIClient(ld)            # wraps your existing LD client
 
-ai_client = LDAIClient(ld)   # wraps your existing LD client
-
-# Context attribute routes to the right AI Config variation
+# The "department" attribute routes to the right AI Config variation
 context = Context.builder(user_key).set("department", "ed").build()
 
-# Model name and system prompt come from the LaunchDarkly dashboard
+# Model name AND system prompt come from the LaunchDarkly dashboard
 ai_config, tracker = ai_client.config(
-    "helix-clinical-ai",
-    context,
-    AIConfig(enabled=False)   # safe fallback if flag is off
-)
-
-model_name    = ai_config.model.name   # "claude-haiku-4-5-20251001"
-system_prompt = next(
-    (m.content for m in ai_config.messages if m.role == "system"),
-    "Default fallback prompt"
+    "helix-clinical-ai", context, AIConfig(enabled=False)
 )
 
 response = anthropic_client.messages.create(
-    model=model_name,
-    max_tokens=1024,
-    system=system_prompt,              # ← controlled from LD dashboard
-    messages=[{"role": "user", "content": transcript}]
+    model=ai_config.model.name,            # ← e.g. claude-haiku-4-5
+    system=ai_config.messages[0].content,  # ← prompt owned in LD
+    messages=[{"role": "user", "content": transcript}],
 )
-
-tracker.track_success()                # ← usage tracked back to LaunchDarkly
-tracker.track_tokens(input_tokens=response.usage.input_tokens,
-                     output_tokens=response.usage.output_tokens)</code></pre>
+tracker.track_success()                    # ← usage tracked back to LD</code></pre>
   <aside class="notes">
-    This is the key pattern. One call to ai_client.config(): the model name and system prompt come back from LaunchDarkly based on the context. We extract them, pass them to Anthropic, and track usage back to LD. Change the model or prompt in the dashboard and the next call picks it up automatically. The application code never needs to change. This is how you do responsible AI deployment.
+    The code behind all of that is almost anticlimactic, which is exactly the point. You make one call to fetch the AI config, and LaunchDarkly hands back the right model and the right prompt for this context. You pass them to the model, then report token usage and success back to LaunchDarkly so you can see cost and reliability per variation. The application code itself never changes; the model and the prompt are controlled entirely from the dashboard.
   </aside>
 </section>
 
@@ -909,43 +778,30 @@ tracker.track_tokens(input_tokens=response.usage.input_tokens,
   <h2>"My Baby at 2am"</h2>
   <div class="cols-6-4 cols">
     <div>
-      <div class="callout blue" style="font-size:0.68em;margin-bottom:12px;">
-        <strong>Scenario:</strong> A first-time parent. 3am. Their 3-week-old has a fever of 100.8°F and won't stop crying. They don't know whether to rush to the ER or wait until morning.
+      <div class="callout blue" style="font-size:0.6em;margin-bottom:12px;">
+        <strong>Scenario:</strong> A first-time parent. 3am. Their 3-week-old has a fever of 100.8°F and won't stop crying — rush to the ER, or wait until morning?
       </div>
-      <div class="callout green" style="font-size:0.68em;">
-        <strong>HELIX-PARENT</strong> responds with warm, evidence-based guidance: references AAP guidelines, explains what to watch for, tells them clearly when to call 911.<br><br>
-        If the response detects an emergency, an escalation flag triggers the nurse line workflow. If the AI feature is off for any reason, the fallback is the 24/7 nurse line. Parents are never left without support.
+      <div class="callout green" style="font-size:0.6em;">
+        <strong>HELIX-PARENT</strong> gives warm, evidence-based guidance and says clearly when to call 911. If it detects an emergency, an escalation flag triggers the nurse-line workflow — and if the AI is off, it falls back to the 24/7 nurse line.
       </div>
     </div>
     <div>
-      <pre style="font-size:0.44em;"><code class="python"># Simple escalation heuristic
-escalate = any(
-    w in content.lower()
-    for w in [
-        "911",
-        "emergency room",
-        "call 911",
-        "go to the ed"
-    ]
-)
+      <pre style="font-size:0.48em;"><code class="python"># Escalation heuristic: detect an emergency
+escalate = any(w in content.lower() for w in
+    ["911", "emergency room", "go to the ed"])
 
-# Graceful fallback when
-# flag is OFF
+# Graceful fallback when the AI Config is OFF
 if not ai_config.enabled:
     return {
-        "response": (
-            "Our AI assistant is "
-            "temporarily unavailable. "
-            "Please call our 24/7 "
-            "nurse line at "
-            "1-800-HELIX-RN."
-        ),
-        "escalate": False
+        "response": "Our AI assistant is "
+            "unavailable — please call the "
+            "24/7 nurse line: 1-800-HELIX-RN.",
+        "escalate": False,
     }</code></pre>
     </div>
   </div>
   <aside class="notes">
-    Parent Connect is the emotional core of this demo. It's 3am. A new parent is scared. HELIX-PARENT responds: warm, clear, evidence-based. We have a simple escalation heuristic: if the AI response mentions 911 or the emergency room, we flag it for the UI to show the nurse line prominently. And if the feature flag is off for any reason, we fail gracefully to the 24/7 nurse line. The parent always has someone to talk to. Safety is never compromised.
+    Let me make that concrete with my favourite example. It's three in the morning, a first-time parent's three-week-old has a fever and won't stop crying, and they honestly don't know whether to rush to the ER or wait until morning. Parent Connect, running that warm persona, gives them calm, evidence-based guidance and tells them clearly when it's time to call 911. If the response sounds like an emergency, we flag it and put the nurse line front and centre. And if the AI feature is switched off for any reason, it falls back gracefully to the 24/7 nurse line, so a frightened parent is never left with nothing.
   </aside>
 </section>
 
@@ -962,15 +818,15 @@ if not ai_config.enabled:
     </div>
     <div class="cap">
       <span class="icon">⚡</span>
-      <div class="text"><strong>Instant rollback</strong><span>SSE listener + flag trigger. Toggle OFF → every connected user sees the old experience in under one second.</span></div>
+      <div class="text"><strong>Instant rollback</strong><span>SSE listener + one REST call (or a dashboard toggle). Flag OFF → every connected user sees the old experience in under one second.</span></div>
     </div>
     <div class="cap">
       <span class="icon">🎯</span>
-      <div class="text"><strong>Surgical targeting</strong><span>Individual + rule-based + multi-context. The right feature for the right provider at the right hospital. Zero code changes per targeting update.</span></div>
+      <div class="text"><strong>Targeted access</strong><span>One rule controls who can see the Maternity Care Pathway — and the chart actually changes per clinician. Grant or revoke access from the dashboard, zero code.</span></div>
     </div>
     <div class="cap">
-      <span class="icon">🧪</span>
-      <div class="text"><strong>Experimentation</strong><span>Track metric events per flag variation. Make data-driven rollout decisions instead of guessing.</span></div>
+      <span class="icon">🎚️</span>
+      <div class="text"><strong>Configuration as a flag</strong><span>Beyond on/off: a Number flag holds a clinical alert threshold the care team tunes from the dashboard, evaluated server-side in Java with no redeploy.</span></div>
     </div>
     <div class="cap">
       <span class="icon">🤖</span>
@@ -978,7 +834,7 @@ if not ai_config.enabled:
     </div>
   </div>
   <aside class="notes">
-    This is the full capability stack. Five things Helix can now do that they couldn't before. Each one independently valuable. Together, they represent a fundamentally different way to ship software and manage AI in a high-stakes clinical environment.
+    So let's step back and look at everything Helix walked away with. They can deploy any time and release only when they're confident. They can roll back in seconds — a toggle or a single API call, and every user is back on the old experience instantly. They can control who sees sensitive information right down to the department, and change that from the dashboard. They can let the clinical team tune real behaviour, like an alert threshold, without an engineering ticket. And they can iterate on their AI, both the models and the prompts, at dashboard speed. Each of those is valuable on its own; together they change how this entire organization ships software, in an environment where the stakes are about as high as they get.
   </aside>
 </section>
 
@@ -1007,7 +863,7 @@ if not ai_config.enabled:
     </div>
   </div>
   <aside class="notes">
-    Healthcare is the perfect context for LaunchDarkly because the stakes are highest. You can't sacrifice quality, but you also can't afford to be slow. LaunchDarkly solves both sides of that tension simultaneously. The AI Config story is especially compelling because every healthcare organisation right now is trying to figure out how to deploy AI responsibly, and LaunchDarkly gives them the control plane they need.
+    Healthcare: highest stakes, can't be slow, can't sacrifice quality. LD solves both simultaneously. Every health system right now is asking how to deploy AI responsibly. AI Config is a direct answer.
   </aside>
 </section>
 
@@ -1049,7 +905,7 @@ if not ai_config.enabled:
     </div>
   </div>
   <aside class="notes">
-    Open for questions. The repo is public at github.com/sepdesign/LD_Helix_Demo. The README has full setup instructions, and the Integration Guide walks through adding LaunchDarkly to any app from scratch. What would you like to dig deeper on?
+    And that's the story: one medical group, three engineering teams, and LaunchDarkly tying it all together, from releasing a feature, to controlling who can see it, to tuning real behaviour, to managing AI, all without redeploying. Everything you saw is in the public repo; the README walks through setup, and the integration guide shows how you'd add LaunchDarkly to an app from scratch. I'd love to dig into any part of it, so what would you like to see again?
   </aside>
 </section>
 
@@ -1067,6 +923,10 @@ if not ai_config.enabled:
     progress: true,
     transition: 'fade',
     transitionSpeed: 'fast',
+    // Logical slide size. Height is a touch taller than the 700 default so
+    // content-rich slides fit without clipping; the deck still scales to any window.
+    width: 960,
+    height: 770,
     plugins: [ RevealHighlight, RevealNotes ]
   });
 </script>

@@ -1,12 +1,20 @@
-// Helix Health Group — Patient Access & Targeting Service (Go)
+// Helix Health Group: Patient Access & Targeting Service (Go)
 // =============================================================
-// Covers:
-//   Part 2 — helix-maternity-pathway flag with individual and rule-based targeting
+// Part 2 of the demo: the helix-maternity-pathway flag, evaluated per clinician.
 //
-// Demonstrates:
-//   • ldcontext with rich clinical attributes (department, role, hospitalTier)
-//   • BoolVariationDetail — returns the evaluation reason (RULE_MATCH, TARGET_MATCH, etc.)
-//   • Flag change listener — logs every flag change to stdout in real time
+// The story: Helix is rolling out a new "Maternity Care Pathway" module. A single
+// targeting rule decides who sees it — "department is maternity" → on, everyone
+// else off. The browser asks this service to evaluate the flag for a given
+// clinician, then renders either the Pathway module or the plain standard chart
+// based on the answer.
+//
+// What this file shows off:
+//   • Building an ldcontext from a clinician's attributes (department, role)
+//   • BoolVariationDetail — returns BOTH the true/false value AND the reason
+//     (RULE_MATCH, FALLTHROUGH, ...), so the UI can explain *why* a clinician
+//     got the result they did
+//   • A flag-change listener that logs to stdout the instant the flag changes
+//     in LaunchDarkly, before any new request even arrives
 //
 // Run:
 //   go mod tidy
@@ -34,8 +42,8 @@ type FeatureResponse struct {
 	UserID     string            `json:"userId"`
 	Flag       string            `json:"flag"`
 	Enabled    bool              `json:"enabled"`
-	Reason     string            `json:"reason"`   // e.g. TARGET_MATCH, RULE_MATCH, FALLTHROUGH
-	Context    map[string]string `json:"context"`  // attributes used in evaluation
+	Reason     string            `json:"reason"`   // RULE_MATCH, FALLTHROUGH, or OFF
+	Context    map[string]string `json:"context"`  // attributes used in the evaluation
 }
 
 // cors wraps a handler with permissive CORS headers for the demo frontend.
@@ -54,21 +62,21 @@ func cors(next http.HandlerFunc) http.HandlerFunc {
 
 // GET /feature
 //
-// Query params — mirror a clinical provider's identity attributes:
-//   userId        string  — provider email / unique key (used for individual targeting)
-//   name          string  — display name (cosmetic)
-//   department    string  — "maternity" | "ed" | "icu" | "general"
-//   role          string  — "attending" | "resident" | "charge_nurse" | "floor_nurse"
-//   hospitalTier  string  — "level1" | "level2" | "community"
-//   hasBirthCenter bool   — "true" | "false"
+// The frontend calls this once per clinician (when you click a persona card).
+// Query params describe who that clinician is:
+//   userId      string: provider email / unique key
+//   name        string: display name (cosmetic)
+//   department  string: "maternity" | "ed" | "general" ...  ← what the rule checks
+//   role        string: "attending" | "charge_nurse" ...    ← carried for display
 //
-// LaunchDarkly targeting rules for helix-maternity-pathway:
-//   Individual targets : dr.chen@helixhealth.org → true
-//                        mary.johnson@helixhealth.org → true
-//   Rule 1  : department = "maternity"  AND role = "attending"       → true
-//   Rule 2  : department = "maternity"  AND role = "charge_nurse"    → true
-//   Rule 3  : hospitalTier = "level1"   AND hasBirthCenter = true    → true
+// The LaunchDarkly targeting rule for helix-maternity-pathway is deliberately
+// simple — one attribute, one rule:
+//   Rule    : department is one of "maternity"  → true
 //   Default : false
+//
+// You can expand the rollout entirely from the dashboard later (add another
+// department, target a single provider by key, gate by hospital, ramp by
+// percentage) without touching a line of this code.
 func featureHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -79,17 +87,14 @@ func featureHandler(w http.ResponseWriter, r *http.Request) {
 
 	department := q.Get("department")
 	role := q.Get("role")
-	hospitalTier := q.Get("hospitalTier")
-	hasBirthCenter := q.Get("hasBirthCenter") == "true"
 
-	// Build the LaunchDarkly context with clinical attributes.
-	// These attributes are what the targeting rules in the LD dashboard match against.
+	// Build the LaunchDarkly context for this clinician. The "department"
+	// attribute is what the targeting rule matches on; "role" rides along for
+	// display and so you could target on it later with no code change.
 	ctx := ldcontext.NewBuilder(userID).
 		Name(q.Get("name")).
 		SetString("department", department).
 		SetString("role", role).
-		SetString("hospitalTier", hospitalTier).
-		SetBool("hasBirthCenter", hasBirthCenter).
 		Build()
 
 	// BoolVariationDetail returns the value AND the reason LD used to decide it.
@@ -103,9 +108,11 @@ func featureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reason := "UNKNOWN"
-	if detail.Reason != nil {
-		reason = detail.Reason.String()
+	// detail.Reason is a value type (ldreason.EvaluationReason). Its zero value
+	// has an empty kind; GetKind() yields TARGET_MATCH / RULE_MATCH / FALLTHROUGH / OFF.
+	reason := string(detail.Reason.GetKind())
+	if reason == "" {
+		reason = "UNKNOWN"
 	}
 
 	resp := FeatureResponse{
@@ -114,10 +121,8 @@ func featureHandler(w http.ResponseWriter, r *http.Request) {
 		Enabled: enabled,
 		Reason:  reason,
 		Context: map[string]string{
-			"department":     department,
-			"role":           role,
-			"hospitalTier":   hospitalTier,
-			"hasBirthCenter": fmt.Sprintf("%v", hasBirthCenter),
+			"department": department,
+			"role":       role,
 		},
 	}
 
@@ -128,7 +133,7 @@ func featureHandler(w http.ResponseWriter, r *http.Request) {
 // GET /health
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
-	if !ldClient.IsInitialized() {
+	if !ldClient.Initialized() {
 		status = "sdk_not_ready"
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -138,7 +143,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// Load .env from parent directory (project root)
 	if err := godotenv.Load("../.env"); err != nil {
-		log.Println("No .env file found — expecting environment variables to be set")
+		log.Println("No .env file found, expecting environment variables to be set")
 	}
 
 	sdkKey := os.Getenv("LD_SERVER_SDK_KEY")
@@ -156,13 +161,13 @@ func main() {
 
 	log.Println("LaunchDarkly Go SDK initialised successfully")
 
-	// Flag change listener — fires whenever ANY flag changes in this environment.
+	// Flag change listener: fires whenever ANY flag changes in this environment.
 	// In the demo: toggle helix-maternity-pathway in the LD dashboard and watch
 	// this log line appear instantly, before any API call is made.
 	flagCh := ldClient.GetFlagTracker().AddFlagChangeListener()
 	go func() {
 		for event := range flagCh {
-			log.Printf("[LD] Flag changed: %s — all subsequent evaluations will use the new value\n", event.Key)
+			log.Printf("[LD] Flag changed: %s, all subsequent evaluations will use the new value\n", event.Key)
 		}
 	}()
 

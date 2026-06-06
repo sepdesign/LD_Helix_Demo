@@ -1,6 +1,6 @@
 # Integrating LaunchDarkly into Helix Health Group
 
-This guide walks through taking an application with **no feature management** and progressively adding LaunchDarkly capabilities: basic flag evaluation, real-time listeners, targeted rollouts, multi-context evaluation, experimentation, and AI Config.
+This guide walks through taking an application with **no feature management** and progressively adding LaunchDarkly capabilities: basic flag evaluation, real-time listeners, targeted rollouts, configuration-driven features (Number/String/JSON flags), and AI Config.
 
 ---
 
@@ -11,7 +11,7 @@ Most teams control feature visibility using environment variables or hardcoded c
 ### Python
 
 ```python
-# config.py — the DIY approach
+# config.py: the DIY approach
 import os
 
 FEATURES = {
@@ -68,7 +68,7 @@ public Map<String, Object> getFeature() {
 | Target specific users | Not possible | Individual + rule-based targeting |
 | Instant browser updates | Page reload or service restart | Server-Sent Events, no reload |
 | Audit trail | None | Who changed what, when, and why |
-| A/B experimentation | Manual analytics pipeline | Built-in experiment framework |
+| Tune a runtime parameter | Redeploy to change a constant | Number/String/JSON flag, changed live |
 | AI model/prompt control | Hardcoded string constants | Change from dashboard, no deploy |
 | Rollback under incident | Revert commit, deploy | Toggle the flag off |
 
@@ -82,7 +82,7 @@ public Map<String, Object> getFeature() {
 2. Go to **Organization settings → Environments → Test**
 3. Copy your **Server-side SDK key** (starts with `sdk-`)
 4. Also copy your **Client-side ID** for any browser-side evaluations
-5. Store both in your `.env` file — never commit them
+5. Store both in your `.env` file, never commit them
 
 ```env
 LD_SERVER_SDK_KEY="sdk-your-key-here"
@@ -160,7 +160,7 @@ import (
     "time"
 )
 
-// Initialize once — blocks until connected or timeout
+// Initialize once, blocks until connected or timeout
 client, err := ld.MakeClient(os.Getenv("LD_SERVER_SDK_KEY"), 5*time.Second)
 if err != nil {
     log.Fatalf("LaunchDarkly failed to initialize: %v", err)
@@ -233,9 +233,9 @@ context = (
 enabled = ld.bool_variation("helix-auto-scribe", context, False)
 
 if enabled:
-    run_ai_coding()    # new path — controlled by LD flag
+    run_ai_coding()    # new path, controlled by LD flag
 else:
-    run_manual_form()  # old path — safe default
+    run_manual_form()  # old path, safe default
 ```
 
 #### Go
@@ -285,13 +285,13 @@ detail, err := client.BoolVariationDetail(
     false,
 )
 
-// detail.Value            — the flag value (true / false)
-// detail.Reason.Kind      — EvaluationReasonKind:
+// detail.Value: the flag value (true / false)
+// detail.Reason.Kind: EvaluationReasonKind:
 //                             TARGET_MATCH  (individual target matched)
 //                             RULE_MATCH    (a targeting rule matched)
 //                             FALLTHROUGH   (no rules matched, using default)
 //                             OFF           (flag is disabled)
-// detail.Reason.RuleIndex — which rule index matched (for RULE_MATCH)
+// detail.Reason.RuleIndex: which rule index matched (for RULE_MATCH)
 ```
 
 Surface `detail.Reason.Kind` in your API response to show users and your team exactly why they are getting a particular experience.
@@ -379,22 +379,24 @@ es.onmessage = (event) => {
 
 ---
 
-### Step 8: Set Up a Flag Trigger for Automated Rollback
+### Step 8: Automate Rollback (turn a flag off from code)
 
-A trigger gives external systems a webhook URL that turns your flag off automatically. Your monitoring system becomes your rollback mechanism.
+Once a flag is wired in, you can flip it without a deployment — manually in the dashboard, or programmatically so a monitor can roll back for you.
 
-**In the LaunchDarkly dashboard:**
-1. Open `helix-auto-scribe` → **Settings** tab → **Triggers** → **Add trigger**
-2. Type: **Generic trigger** | Action: **Turn flag off**
-3. Copy the generated URL
-
-**Test it manually:**
+**Option A — REST API (token-based, used in this demo).** Turn the flag off with a semantic-patch call. The token is an API access token (**Account settings → Authorization → Access tokens**) with write access to the Test environment, kept in `LD_API_TOKEN`:
 
 ```bash
-curl -X POST "https://app.launchdarkly.com/api/v1/flags/triggers/YOUR_TRIGGER_URL"
+curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" \
+  -H "Authorization: $LD_API_TOKEN" \
+  -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" \
+  -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'
 ```
 
-**In production:** wire this URL into PagerDuty, Datadog, or any alerting system. When an error rate threshold is breached, the monitor fires the webhook automatically with no human in the loop.
+Swap `turnFlagOff` → `turnFlagOn` to release it again. The project key is `default` unless you created a custom project.
+
+**Option B — Flag trigger (no token).** A trigger gives an external system its own webhook URL that turns the flag off, with no API token required. In the dashboard: open `helix-auto-scribe` → **Settings** → **Triggers** → **Add trigger** → **Generic trigger** → **Turn flag off**. LaunchDarkly generates one complete, unguessable URL and shows it only once — copy the whole thing and POST to it from your monitoring system. (You don't construct this URL by appending a token to a base path; LD issues the entire URL.)
+
+**In production:** wire either approach into PagerDuty, Datadog, or any alerting system. When an error-rate threshold is breached, the monitor flips the flag automatically with no human in the loop.
 
 ---
 
@@ -459,66 +461,27 @@ Future rollout stages (opening to more departments, more roles, all hospitals) a
 
 ---
 
-### Step 11: Multi-Context Evaluation (Java)
+### Step 11: Configuration as a Flag (Java)
 
-Multi-context evaluates a single flag against **multiple independent contexts simultaneously**. A user's access can depend on who they are *and* what organization they belong to, without coupling those concerns in your code.
+Flags aren't only on/off switches — they can carry a value your code reads at runtime. Here a developer has built a blood-pressure alert, but the threshold it fires at is a LaunchDarkly **Number** flag (`helix-bp-alert-threshold`) that the clinical team owns. The alert logic stays in code; the parameter moves to the dashboard.
 
 ```java
-import com.launchdarkly.sdk.ContextKind;
 import com.launchdarkly.sdk.LDContext;
 
-// User context — the individual provider
-LDContext userCtx = LDContext
-        .builder(ContextKind.of("user"), userId)
-        .name(name)
-        .set("role",       role)
-        .set("department", department)
-        .build();
+LDContext ctx = LDContext.builder("helix-clinical-platform").build();
 
-// Organisation context — the hospital
-LDContext orgCtx = LDContext
-        .builder(ContextKind.of("organization"), orgId)
-        .set("plan",          orgPlan)        // "enterprise" | "standard"
-        .set("hasBirthCenter", hasBirthCenter) // true | false
-        .build();
+// helix-bp-alert-threshold is a NUMBER flag (default 140 mmHg).
+// intVariation reads its current value at request time.
+int threshold = ldClient.intVariation("helix-bp-alert-threshold", ctx, 140);
 
-// Combine — LD evaluates targeting rules against both simultaneously
-LDContext multiCtx = LDContext.createMulti(userCtx, orgCtx);
-
-boolean enabled = ldClient.boolVariation("helix-maternity-pathway", multiCtx, false);
+boolean alert = reading >= threshold;   // the alert logic lives in code
 ```
 
-**In the dashboard:** you can now write rules like:
-- `organization.plan` is `enterprise` → `true`
-- `user.role` is `attending` AND `organization.hasBirthCenter` is `true` → `true`
-
-This pattern handles B2B entitlements: org-level access grants that work alongside user-level targeting.
+Change `helix-bp-alert-threshold` in the dashboard and call this again — the new threshold is used instantly, with no redeploy. The clinical team can re-tune a clinical parameter as guidelines evolve without ever filing an engineering ticket. Beyond Number flags, the same idea works with String and JSON flags to drive richer configuration.
 
 ---
 
-### Step 12: Track Experimentation Events (Java)
-
-Wire custom metric events into LaunchDarkly Experimentation to measure the impact of each flag variation.
-
-```java
-// Fires when a provider engages with the new maternity pathway feature.
-// LD attributes this event to the correct flag variation automatically.
-ldClient.trackMetric(
-        "maternity-pathway-engaged",  // must match the metric key in LD Experimentation
-        ctx,
-        1.0                           // optional numeric value
-);
-```
-
-**Setup in the dashboard:**
-1. **Experimentation → Metrics → Create metric** | Key: `maternity-pathway-engaged` | Type: Custom
-2. Open `helix-maternity-pathway` → **Experiments** tab → **Create experiment**
-3. Attach the metric; configure traffic allocation
-4. After enough events accumulate, LD shows statistical significance per variation
-
----
-
-### Step 13: Integrate AI Config (AgentControl)
+### Step 12: Integrate AI Config (AgentControl)
 
 AI Config lets you control your LLM's model name and system prompt from the LaunchDarkly dashboard. Change either one and the next API call picks it up, with no deployment required.
 
@@ -545,12 +508,12 @@ pip install launchdarkly-server-sdk-ai==0.6.0
 from ldai.client import LDAIClient, AIConfig
 import anthropic
 
-# Wrap the existing LD client — one extra line
+# Wrap the existing LD client, one extra line
 ai_client = LDAIClient(ld)
 
 anthropic_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-# Build a context — the department attribute routes to the right AI variation
+# Build a context: the department attribute routes to the right AI variation
 context = (
     Context.builder(user_key)
     .set("department", "ed")          # → HELIX-SCRIBE-ED (Haiku)
@@ -559,7 +522,7 @@ context = (
     .build()
 )
 
-# One call — model name and system prompt come from the LD dashboard
+# One call: model name and system prompt come from the LD dashboard
 ai_config, tracker = ai_client.config(
     "helix-clinical-ai",
     context,
@@ -580,7 +543,7 @@ system_prompt = next(
     "You are a clinical coding assistant. Return valid JSON only.",
 )
 
-# Call Anthropic — model and prompt are fully LD-controlled
+# Call Anthropic: model and prompt are fully LD-controlled
 response = anthropic_client.messages.create(
     model=model_name,
     max_tokens=1024,
@@ -588,7 +551,7 @@ response = anthropic_client.messages.create(
     messages=[{"role": "user", "content": clinical_transcript}],
 )
 
-# Track usage back to LaunchDarkly for monitoring and experimentation
+# Track usage back to LaunchDarkly for AI cost + reliability monitoring
 tracker.track_success()
 tracker.track_tokens(
     input_tokens=response.usage.input_tokens,
@@ -619,21 +582,15 @@ curl -X POST http://localhost:8000/code-encounter \
   -d '{"transcript": "Patient presents with chest pain.", "department": "ed", "userId": "test-provider"}'
 
 # 3. Confirm targeting + evaluation reason works (Go)
-curl "http://localhost:8001/feature?userId=dr.chen@helixhealth.org&department=maternity&role=attending"
-# Expected: {"enabled": true, "reason": {"kind": "TARGET_MATCH"}, ...}
+curl "http://localhost:8001/feature?userId=dr.alvarez@helixhealth.org&department=maternity&role=attending"
+# Expected: {"enabled": true, "reason": "RULE_MATCH", ...}
 
-curl "http://localhost:8001/feature?userId=nurse.kim@helixhealth.org&department=icu&role=floor_nurse"
-# Expected: {"enabled": false, "reason": {"kind": "FALLTHROUGH"}, ...}
+curl "http://localhost:8001/feature?userId=dr.reed@helixhealth.org&department=emergency&role=attending"
+# Expected: {"enabled": false, "reason": "FALLTHROUGH", ...}
 
-# 4. Confirm multi-context evaluation works (Java)
-curl "http://localhost:8002/feature/multi-context?userId=test&orgPlan=enterprise&hasBirthCenter=true"
-# Expected: {"enabled": true, ...}
-
-# 5. Confirm experimentation event tracking (Java)
-curl -X POST http://localhost:8002/track-event \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "test-provider", "eventName": "maternity-pathway-engaged"}'
-# Expected: {"tracked": true, ...}
+# 4. Confirm the config-driven alert works (Java)
+curl "http://localhost:8002/lab-check?value=135"
+# Expected: {"flag": "helix-bp-alert-threshold", "value": 135, "threshold": 140, "alert": false}
 ```
 
 ---
@@ -644,12 +601,10 @@ curl -X POST http://localhost:8002/track-event \
 |---|---|---|
 | Feature flag release | `helix-auto-scribe` wraps AI coding panel | Deploy anytime; release when confident |
 | Real-time listener | SSE stream: flag change → browser update | No page reload, no polling |
-| Trigger-based rollback | Webhook → flag off | Seconds to remediate, not hours |
-| Context-based targeting | Department, role, hospital tier attributes | Precise rollout without code changes |
-| Individual targeting | Beta providers by email key | Controlled beta before broad release |
-| Rule-based targeting | Specialty + tier rules | Surgical expansion stage by stage |
-| Multi-context evaluation | User + organization contexts combined | B2B entitlements pattern |
-| Experimentation | Metric events on maternity pathway | Data-driven release decisions |
+| REST API rollback | PATCH the flag off via the LD API | Seconds to remediate, not hours |
+| Context-based targeting | Department attribute drives the Maternity Pathway | Precise rollout without code changes |
+| Evaluation reason | Go SDK returns `RULE_MATCH` / `FALLTHROUGH` | Explain exactly why a user got a result |
+| Configuration as a flag | Java reads a Number flag for a clinical alert threshold | Non-engineers tune real behaviour, no redeploy |
 | AI Config | Model + prompt per clinical persona | Iterate on AI without deployments |
 
 ---
@@ -660,6 +615,5 @@ curl -X POST http://localhost:8002/track-event \
 - [LaunchDarkly Go SDK docs](https://docs.launchdarkly.com/sdk/server-side/go)
 - [LaunchDarkly Java SDK docs](https://docs.launchdarkly.com/sdk/server-side/java)
 - [AI Config (AgentControl) docs](https://docs.launchdarkly.com/home/ai-configs)
-- [Experimentation docs](https://docs.launchdarkly.com/home/experimentation)
-- [Flag triggers docs](https://docs.launchdarkly.com/home/flags/triggers)
-- [Multi-context docs](https://docs.launchdarkly.com/home/contexts/multi-contexts)
+- [REST API: update a flag](https://docs.launchdarkly.com/tag/feature-flags#operation/patchFeatureFlag)
+- [Custom roles & access tokens](https://docs.launchdarkly.com/home/account/api)

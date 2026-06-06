@@ -15,7 +15,7 @@
   <groupId>com.helixhealth</groupId>
   <artifactId>helix-java-service</artifactId>
   <version>1.0.0</version>
-  <name>Helix Health — Java Clinical Analytics Service</name>
+  <name>Helix Health: Java Clinical Analytics Service</name>
 
   <properties>
     <java.version>17</java.version>
@@ -39,7 +39,7 @@
     </dependency>
 
     <!--
-      dotenv-java — loads .env file so we don't hardcode credentials
+      dotenv-java: loads .env file so we don't hardcode credentials
       https://github.com/cdimascio/dotenv-java
     -->
     <dependency>

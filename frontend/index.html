@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Helix Health Group — Clinical Platform</title>
+  <title>Helix Health Group: Clinical Platform</title>
   <style>
     /* ------------------------------------------------------------------ */
     /* Base                                                                 */
@@ -62,7 +62,7 @@
     /* ------------------------------------------------------------------ */
     .layout { display: flex; height: calc(100vh - 60px); }
 
-    /* Left sidebar — tabs */
+    /* Left sidebar: tabs */
     nav {
       width: 200px; flex-shrink: 0;
       background: #fff; border-right: 1px solid var(--border);
@@ -89,6 +89,9 @@
     /* Panels */
     .panel { display: none; }
     .panel.active { display: block; }
+    /* Generic show/hide used by the SSE listener to swap the manual workflow
+       for the AI workflow (and vice-versa) when the flag changes. */
+    .hidden { display: none !important; }
 
     /* ------------------------------------------------------------------ */
     /* Cards                                                                */
@@ -128,13 +131,21 @@
     /* Forms & inputs                                                       */
     /* ------------------------------------------------------------------ */
     label  { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .3rem; }
-    select, textarea, input[type=text] {
+    select, textarea, input[type=text], input[type=number] {
       width: 100%; padding: .55rem .75rem;
       border: 1px solid var(--border); border-radius: 6px;
       font-size: .875rem; color: var(--text);
       background: #fff; margin-bottom: 1rem;
     }
-    textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+    /* Text areas grow to fit their content via autoGrow() in the script below,
+       so they never need a vertical scrollbar. width:100% (above) keeps them
+       fluid as the window resizes, and overflow:hidden suppresses the scrollbar
+       in the brief moment before the first auto-grow runs. Long lines wrap, so
+       there is never a horizontal scrollbar either. */
+    textarea {
+      resize: none; overflow: hidden;
+      min-height: 4.5rem; line-height: 1.5; font-family: inherit;
+    }
     select { cursor: pointer; }
 
     /* Buttons */
@@ -151,17 +162,18 @@
     .btn-sm { padding: .35rem .8rem; font-size: .8rem; }
 
     /* ------------------------------------------------------------------ */
-    /* Code results                                                         */
+    /* Code result box (Part 1 billing-code JSON output)                    */
+    /* It grows to fit its content and wraps long lines, so it never shows  */
+    /* a horizontal or vertical scrollbar — it just gets as tall as needed. */
     /* ------------------------------------------------------------------ */
-    #coding-result, #mc-result, #parent-result {
+    #coding-result {
       background: #1a2333; color: #e2e8f0;
       border-radius: 6px; padding: 1rem;
       font-family: "Cascadia Code", "Fira Code", monospace; font-size: .82rem;
-      white-space: pre-wrap; word-break: break-word;
-      max-height: 360px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
       display: none;
     }
-    #coding-result.visible, #mc-result.visible, #parent-result.visible { display: block; }
+    #coding-result.visible { display: block; }
 
     /* ------------------------------------------------------------------ */
     /* Targeting demo table                                                 */
@@ -181,13 +193,48 @@
       background: #eef5fa; color: var(--brand); margin-top: .4rem;
     }
 
-    .result-pill {
-      display: inline-flex; align-items: center; gap: .4rem;
-      padding: .25rem .75rem; border-radius: 999px;
-      font-size: .8rem; font-weight: 700; margin-top: .5rem;
-    }
-    .result-pill.on  { background: #d4f3e8; color: #1a7a4e; }
-    .result-pill.off { background: #fde8e8; color: #8b1a1a; }
+    /* ------------------------------------------------------------------ */
+    /* Part 2: rendered patient chart (the feature being gated)            */
+    /* ------------------------------------------------------------------ */
+    .chart { border-radius: 8px; padding: 1rem 1.25rem; }
+    .chart.pathway  { background: linear-gradient(135deg,#eaf4fb 0%,#f0fdf9 100%); border: 2px solid var(--accent); }
+    .chart.standard { background: #f7f9fb; border: 1px solid var(--border); }
+    .chart-head { display:flex; justify-content:space-between; align-items:center;
+                  gap:.75rem; flex-wrap:wrap; margin-bottom:.85rem; font-size:.9rem; }
+    .chart-tag { font-size:.74rem; font-weight:700; padding:.22rem .6rem; border-radius:999px; white-space:nowrap; }
+    .chart-tag.granted { background:#d4f3e8; color:#1a7a4e; }
+    .chart-tag.denied  { background:#eef1f5; color:var(--muted); }
+    .stage-tracker { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.85rem; }
+    .stage { font-size:.76rem; padding:.3rem .7rem; border-radius:999px;
+             background:#fff; border:1px solid var(--border); color:var(--muted); }
+    .stage.done    { background:#e8f6ef; border-color:#bfe6d4; color:#1a7a4e; }
+    .stage.current { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+    .care-plan { font-size:.83rem; background:#fff; border:1px solid var(--border);
+                 border-left:3px solid var(--brand); border-radius:6px;
+                 padding:.6rem .8rem; margin-bottom:.75rem; line-height:1.5; }
+    .order-chips { display:flex; flex-wrap:wrap; gap:.4rem; }
+    .order-chips .chip { font-size:.75rem; padding:.25rem .6rem; border-radius:6px;
+                         background:#eef5fa; color:var(--brand); font-weight:600; }
+    .order-chips .chip.warn { background:#fdecea; color:#b3392b; }
+    .chart-foot { font-size:.76rem; color:var(--muted); margin:.75rem 0 0; }
+    .vitals { list-style:none; display:flex; flex-wrap:wrap; gap:1.25rem;
+              padding:0; margin:.25rem 0 .85rem; font-size:.85rem; color:var(--text); }
+    .vitals li { font-variant-numeric: tabular-nums; }
+    .locked-note { font-size:.82rem; color:var(--muted); background:#fff;
+                   border:1px dashed var(--border); border-radius:6px; padding:.55rem .8rem; }
+    .eval-detail { margin-top:1rem; font-size:.8rem; }
+    .eval-detail summary { cursor:pointer; color:var(--muted); font-weight:600; }
+    .eval-detail .ev-line { margin:.5rem 0; line-height:1.6; }
+    .eval-detail pre { margin-top:.5rem; padding:.75rem; background:#f4f6f9;
+                       border-radius:6px; white-space:pre-wrap; word-break:break-word; }
+    /* Part 3: big real-time flag evaluation result */
+    .eval-status { border-radius:10px; padding:1.5rem; text-align:center; border:2px solid; }
+    .eval-status.on  { background:#eafaf1; border-color:var(--ok); }
+    .eval-status.off { background:#fdecea; border-color:var(--danger); }
+    .eval-badge { font-size:1.6rem; font-weight:800; letter-spacing:.02em; }
+    .eval-status.on  .eval-badge { color:#1a7a4e; }
+    .eval-status.off .eval-badge { color:#8b1a1a; }
+    .eval-meta { margin-top:.6rem; font-size:.82rem; color:var(--muted); line-height:1.6; }
 
     /* ------------------------------------------------------------------ */
     /* Chat (Parent Connect)                                                */
@@ -231,12 +278,58 @@
              font-size: .72rem; font-weight: 700; }
     .badge-sdk { background: #ede9fe; color: #5b21b6; }
     .badge-part { background: #fef3c7; color: #92400e; }
+
+    /* ------------------------------------------------------------------ */
+    /* Demo driver — inline presenter runbook (commands to drive a panel)  */
+    /* ------------------------------------------------------------------ */
+    details.driver {
+      background: #0f1b2d; border: 1px solid #1e3a5f;
+      border-left: 4px solid var(--accent); border-radius: var(--radius);
+      padding: .9rem 1.15rem; margin-bottom: 1.25rem;
+    }
+    details.driver > summary {
+      font-weight: 700; color: #fff; cursor: pointer; font-size: .9rem;
+      list-style: none; display: flex; align-items: center; gap: .5rem;
+    }
+    details.driver > summary::-webkit-details-marker { display: none; }
+    details.driver > summary::before {
+      content: "▸"; color: var(--accent); transition: transform .15s;
+    }
+    details.driver[open] > summary::before { transform: rotate(90deg); }
+    details.driver ol { margin: .85rem 0 .15rem; padding-left: 1.35rem; }
+    details.driver li { font-size: .82rem; line-height: 1.65; margin-bottom: .5rem; color: #cbd5e1; }
+    details.driver li strong { color: #fff; }
+    details.driver code:not(.cmd code) {
+      background: #1e2d44; color: #7dd3fc; padding: .05rem .35rem;
+      border-radius: 4px; font-size: .78rem;
+    }
+    details.driver .ld-path {
+      color: #fbbf24; font-weight: 600;
+      background: rgba(251,191,36,.12); padding: .05rem .4rem; border-radius: 4px;
+    }
+    details.driver .cmd {
+      display: flex; align-items: flex-start; gap: .5rem;
+      background: #060d18; border: 1px solid #1e3a5f; border-radius: 6px;
+      padding: .45rem .6rem; margin: .45rem 0;
+    }
+    details.driver .cmd code {
+      flex: 1; min-width: 0; color: #7dd3fc;
+      white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+      font-family: "Cascadia Code", "Fira Code", monospace; font-size: .76rem;
+    }
+    details.driver .copy-btn {
+      background: #1e3a5f; color: #cbd5e1; border: none; border-radius: 4px;
+      padding: .25rem .65rem; font-size: .72rem; font-weight: 600;
+      cursor: pointer; flex-shrink: 0;
+    }
+    details.driver .copy-btn:hover { background: var(--accent); color: #fff; }
+    details.driver .copy-btn.copied { background: var(--ok); color: #fff; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>⚕ Helix Health Group — Clinical Platform</h1>
+  <h1>⚕ Helix Health Group: Clinical Platform</h1>
   <div style="display:flex;align-items:center;gap:1rem">
     <span>LaunchDarkly SE Demo</span>
     <div id="flag-badge" class="off">
@@ -252,11 +345,11 @@
   <!-- Sidebar navigation                                                   -->
   <!-- ------------------------------------------------------------------ -->
   <nav>
-    <button class="active" onclick="showPanel('p1')">📋 Part 1 — Release</button>
-    <button onclick="showPanel('p2')">🎯 Part 2 — Target</button>
-    <button onclick="showPanel('p2j')">🏢 Multi-Context (Java)</button>
-    <button onclick="showPanel('ai')">🤖 AI Config</button>
-    <button onclick="showPanel('parent')">👶 Parent Connect</button>
+    <button class="active" onclick="showPanel('p1', this)">📋 Part 1: Release</button>
+    <button onclick="showPanel('p2', this)">🎯 Part 2: Target</button>
+    <button onclick="showPanel('p2j', this)">🩺 Part 3: Alerts</button>
+    <button onclick="showPanel('ai', this)">🤖 AI Config</button>
+    <button onclick="showPanel('parent', this)">👶 Parent Connect</button>
   </nav>
 
   <!-- ------------------------------------------------------------------ */
@@ -265,36 +358,150 @@
   <main>
 
     <!-- ================================================================ -->
-    <!-- PANEL 1 — Part 1: Release & Remediate                            -->
+    <!-- PANEL 1, Part 1: Release & Remediate                            -->
     <!-- ================================================================ -->
     <div id="p1" class="panel active">
+      <details class="driver" open>
+        <summary>🎬 Demo driver — flip the switch (Part 1)</summary>
+        <ol>
+          <li><strong>Start state:</strong> the badge reads <strong>Auto-Scribe: OFF</strong>, and below you see the tedious <strong>manual coding workflow</strong> — hand-picking every ICD-10 and CPT code is the status quo this feature replaces.</li>
+          <li><strong>Release (turn ON):</strong> flip <span class="ld-path">Flags → helix-auto-scribe</span> ON in the dashboard, or run this REST call (curl / Postman) — the manual form is replaced by the AI Auto-Scribe panel instantly over SSE, no reload:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOn"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Prove it:</strong> click <strong>Generate Billing Codes</strong> — the codes the provider was hunting for by hand now appear in seconds.</li>
+          <li><strong>Remediate (turn OFF):</strong> the same call with <code>turnFlagOff</code> — the panel vanishes instantly, no redeploy:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Run it in Postman:</strong> method <code>PATCH</code>, URL as above. Headers: <code>Authorization: &lt;your-token&gt;</code> (no "Bearer") and <code>Content-Type: application/json; domain-model=launchdarkly.semanticpatch</code>. Body → raw JSON: <code>{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}</code> (use <code>turnFlagOn</code> to release). In Postman, edit the auto-added Content-Type so it keeps the <code>; domain-model=…</code> suffix, or LD returns 400.</li>
+          <li><strong>One-time setup:</strong> create an API access token at <span class="ld-path">Account settings → Authorization → Access tokens</span> (write access to the Test environment) and use it as the <code>Authorization</code> header value. For curl, export it as <code>LD_API_TOKEN</code> (bash: <code>export LD_API_TOKEN=api-…</code> · PowerShell: <code>$env:LD_API_TOKEN="api-…"</code>). The project key is <code>default</code> unless you created a custom project.</li>
+        </ol>
+      </details>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <span class="badge badge-part">Part 1</span>
             <span class="badge badge-sdk" style="margin-left:.4rem">Python SDK</span>
-            <h2 style="margin-top:.5rem">Release & Remediate — AI Auto-Scribe</h2>
+            <h2 style="margin-top:.5rem">Release & Remediate: AI Auto-Scribe</h2>
             <p>
               The <strong>helix-auto-scribe</strong> flag controls the AI clinical
               transcription and billing-code feature. Toggle it in the LaunchDarkly
-              dashboard — the panel below appears or disappears <em>instantly</em>
+              dashboard, the panel below appears or disappears <em>instantly</em>
               without a page reload, powered by an SSE stream from the Python service.
             </p>
           </div>
         </div>
         <div id="sse-indicator">
           <div class="pulse"></div>
-          <span>SSE stream connected — waiting for flag changes from LaunchDarkly</span>
+          <span>SSE stream connected, waiting for flag changes from LaunchDarkly</span>
         </div>
       </div>
 
-      <!-- This card is shown/hidden by the SSE listener -->
-      <div id="scribe-panel" class="card hidden">
-        <h2>✨ AI Auto-Scribe — Active</h2>
+      <!-- ============================================================ -->
+      <!-- The "BEFORE": manual coding workflow.                        -->
+      <!-- Shown while helix-auto-scribe is OFF. This is the tedious    -->
+      <!-- status quo the AI feature replaces — read the encounter and  -->
+      <!-- hand-pick every ICD-10 / CPT code. The SSE listener hides    -->
+      <!-- this and reveals the AI panel the moment the flag flips ON.  -->
+      <!-- ============================================================ -->
+      <div id="manual-panel" class="card" style="border-left:4px solid var(--warn)">
+        <span class="badge badge-part" style="background:#fdecd2;color:#8a5a12">Current workflow</span>
+        <h2 style="margin-top:.5rem;color:var(--warn)">📋 Manual Clinical Coding</h2>
         <p>
-          Select a department, paste or dictate a clinical encounter, and generate
-          ICD-10 + CPT billing codes via Claude (model and prompt controlled by
-          the <strong>helix-clinical-ai</strong> AI Config in LaunchDarkly).
+          With <strong>helix-auto-scribe</strong> OFF, this is what every provider does today:
+          read the encounter and hand-pick each ICD-10 diagnosis and CPT procedure code from
+          the manuals. It averages <strong>~20 minutes per encounter</strong>, and a single
+          wrong code becomes a denied claim.
+        </p>
+
+        <label>Clinical Encounter Transcript</label>
+        <textarea id="manual-transcript" readonly>45-year-old male presents to the ED following a motor vehicle collision. Patient reports chest wall pain, shortness of breath. CT chest reveals left-sided rib fractures (ribs 4-7) with small pneumothorax. Vitals: BP 128/84, HR 98, O2 sat 94% on room air. Placed on supplemental oxygen. Chest tube insertion performed. Patient admitted for observation.</textarea>
+
+        <p class="section-title" style="margin:.25rem 0 .5rem">Find and enter the codes by hand</p>
+        <div class="row">
+          <div>
+            <label>Primary diagnosis (ICD-10)</label>
+            <select class="m-icd">
+              <option value="">— search the ICD-10 manual —</option>
+              <option>S22.42XA — Multiple fractures of ribs, left side, initial</option>
+              <option>S22.41XA — Multiple fractures of ribs, right side, initial</option>
+              <option>S27.0XXA — Traumatic pneumothorax, initial encounter</option>
+              <option>S20.211A — Contusion of left front chest wall, initial</option>
+              <option>S22.39XA — Fracture of one rib, unspecified side, initial</option>
+              <option>R07.9 — Chest pain, unspecified</option>
+              <option>R06.02 — Shortness of breath</option>
+              <option>J93.11 — Primary spontaneous pneumothorax</option>
+              <option>V43.52XA — Car driver injured in collision, initial</option>
+              <option>I10 — Essential (primary) hypertension</option>
+              <option>E11.9 — Type 2 diabetes without complications</option>
+              <option>M54.50 — Low back pain, unspecified</option>
+              <option>R51.9 — Headache, unspecified</option>
+              <option>Z51.11 — Encounter for antineoplastic chemotherapy</option>
+            </select>
+          </div>
+          <div>
+            <label>Secondary diagnosis (ICD-10)</label>
+            <select class="m-icd">
+              <option value="">— search the ICD-10 manual —</option>
+              <option>S27.0XXA — Traumatic pneumothorax, initial encounter</option>
+              <option>S22.42XA — Multiple fractures of ribs, left side, initial</option>
+              <option>R09.02 — Hypoxemia</option>
+              <option>S20.211A — Contusion of left front chest wall, initial</option>
+              <option>R06.02 — Shortness of breath</option>
+              <option>R07.9 — Chest pain, unspecified</option>
+              <option>J93.11 — Primary spontaneous pneumothorax</option>
+              <option>I10 — Essential (primary) hypertension</option>
+              <option>E11.9 — Type 2 diabetes without complications</option>
+              <option>Z79.4 — Long term (current) use of insulin</option>
+              <option>F17.210 — Nicotine dependence, cigarettes</option>
+              <option>M54.50 — Low back pain, unspecified</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Procedure (CPT)</label>
+            <select class="m-cpt">
+              <option value="">— search the CPT manual —</option>
+              <option>32551 — Tube thoracostomy (chest tube), open</option>
+              <option>71250 — CT thorax without contrast</option>
+              <option>71046 — Chest X-ray, 2 views</option>
+              <option>94762 — Pulse oximetry, continuous</option>
+              <option>36556 — Central venous catheter insertion</option>
+              <option>31500 — Intubation, emergency</option>
+              <option>12001 — Simple wound repair</option>
+              <option>99213 — Office visit, established patient</option>
+              <option>93000 — Electrocardiogram, routine</option>
+            </select>
+          </div>
+          <div>
+            <label>E&amp;M complexity level</label>
+            <select class="m-cpt">
+              <option value="">— select level —</option>
+              <option>99281 — ED visit, low complexity</option>
+              <option>99282 — ED visit, low-moderate complexity</option>
+              <option>99283 — ED visit, moderate complexity</option>
+              <option>99284 — ED visit, moderate-high complexity</option>
+              <option>99285 — ED visit, high complexity</option>
+            </select>
+          </div>
+        </div>
+        <div id="manual-extra"></div>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-sm" style="background:#f0f4f8;color:var(--text)" onclick="addManualCode()">+ Add another diagnosis</button>
+          <button class="btn" style="background:var(--warn);color:#fff" onclick="submitManualCodes()">Submit codes for billing</button>
+        </div>
+        <div id="manual-result" style="margin-top:.85rem;font-size:.85rem;display:none"></div>
+      </div>
+
+      <!-- The "AFTER": AI Auto-Scribe panel. Shown while the flag is ON. -->
+      <div id="scribe-panel" class="card hidden">
+        <span class="badge badge-part" style="background:#d4f3e8;color:#1a7a4e">New workflow</span>
+        <h2 style="margin-top:.5rem">✨ AI Auto-Scribe: Active</h2>
+        <p>
+          Same encounter — no manual code hunting. Drop in the clinical encounter and generate
+          ICD-10 + CPT codes in seconds. The model and prompt are controlled by the
+          <strong>helix-clinical-ai</strong> AI Config in LaunchDarkly, so the provider reviews
+          the codes instead of picking every one by hand.
         </p>
 
         <div class="row">
@@ -308,9 +515,9 @@
           <div>
             <label>Provider</label>
             <select id="provider-select">
-              <option value="dr.chen@helixhealth.org">Dr. Chen — Attending OB</option>
-              <option value="dr.patel@helixhealth.org">Dr. Patel — ED Attending</option>
-              <option value="resident1@helixhealth.org">Dr. Kim — Resident</option>
+              <option value="dr.chen@helixhealth.org">Dr. Chen, Attending OB</option>
+              <option value="dr.patel@helixhealth.org">Dr. Patel, ED Attending</option>
+              <option value="resident1@helixhealth.org">Dr. Kim, Resident</option>
             </select>
           </div>
         </div>
@@ -333,177 +540,158 @@
 
       <!-- Remediate section -->
       <div class="card" style="border-left: 4px solid var(--danger)">
-        <h2 style="color:var(--danger)">⚡ Remediate — Flag Trigger</h2>
+        <h2 style="color:var(--danger)">⚡ Remediate: Instant Flag-Off</h2>
         <p>
-          Simulate a billing audit catching an overcoding issue.  In a real setup,
-          your monitoring system POSTs to the LaunchDarkly trigger URL — the flag
-          turns OFF system-wide in under 200ms, no deployment needed.
+          Simulate a billing audit catching an overcoding issue.  Turn the flag OFF
+          straight from the command line via the LaunchDarkly REST API, the flag
+          flips system-wide in under 200ms, no deployment needed.
         </p>
-        <p>
-          <strong>How to set it up:</strong><br>
-          In LD: Flag settings → Triggers → Add trigger → Generic trigger.<br>
-          LD gives you a URL.  POST to that URL from your monitoring system or from curl:
-        </p>
-        <code style="display:block;background:#1a2333;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.8rem;margin:.75rem 0">
-          curl -X POST "https://app.launchdarkly.com/api/v1/flags/triggers/YOUR_TRIGGER_URL"
+        <code style="display:block;background:#1a2333;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.8rem;margin:.75rem 0;white-space:pre-wrap;word-break:break-all">
+          curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'
         </code>
         <p>The flag turns off → SSE fires → this UI updates → no redeploy, no incident bridge.</p>
+        <p style="font-size:.8rem">
+          <strong>Token:</strong> create an API access token under <em>Account settings → Authorization → Access tokens</em>
+          (write access to the Test environment) and set it as <code>LD_API_TOKEN</code> in your shell.
+          Prefer a no-token webhook your monitoring system can call directly? LaunchDarkly flag
+          <em>triggers</em> generate one for exactly that, an alternative to this REST call.
+        </p>
       </div>
     </div>
 
 
     <!-- ================================================================ -->
-    <!-- PANEL 2 — Part 2: Targeting (Go service)                         -->
+    <!-- PANEL 2, Part 2: Targeting (Go service)                         -->
     <!-- ================================================================ -->
     <div id="p2" class="panel">
+      <details class="driver" open>
+        <summary>🎬 Demo driver — targeting (Part 2)</summary>
+        <ol>
+          <li><strong>The story:</strong> the <span class="ld-path">helix-maternity-pathway</span> flag controls who can <em>see</em> a patient's Maternity Care Pathway. One rule decides — <code>department is maternity → access granted</code>, everyone else off.</li>
+          <li><strong>See who has access:</strong> click <strong>Dr. Alvarez (Maternity)</strong> → her chart shows the full pathway (care plan, stages, order sets). Click <strong>Dr. Reed (Emergency)</strong> → he sees only the standard chart; that information is hidden from him.</li>
+          <li><strong>Grant access live:</strong> follow the <em>"Change who has access"</em> card at the bottom — add the ER to the rule in LD, then re-click Dr. Reed and he sees the very same information. No redeploy.</li>
+          <li><strong>Under the hood:</strong> the Go SDK evaluates per user. Expand <em>"LaunchDarkly evaluation detail"</em> under the chart for the reason (<code>RULE_MATCH</code> / <code>FALLTHROUGH</code>) and the exact context sent.</li>
+          <li><strong>Hit the Go SDK directly (optional):</strong>
+            <div class="cmd"><code>curl "http://localhost:8001/feature?userId=dr.alvarez@helixhealth.org&amp;department=maternity&amp;role=attending"</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+        </ol>
+      </details>
       <div class="card">
         <span class="badge badge-part">Part 2</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Go SDK</span>
-        <h2 style="margin-top:.5rem">Targeting — Maternity Pathway Rollout</h2>
+        <h2 style="margin-top:.5rem">Targeting: Who Can See the Maternity Care Pathway</h2>
         <p>
-          The <strong>helix-maternity-pathway</strong> flag is evaluated by the Go
-          service using rich clinical context attributes.  Click a persona below to
-          see which targeting rule (or individual target) grants or denies access.
+          The <strong>helix-maternity-pathway</strong> flag controls <em>who can see</em> a
+          patient's Maternity Care Pathway — the care plan, the stage tracker, and the order
+          sets. One targeting rule decides: <code>department is maternity → access granted</code>,
+          and everyone else sees only the standard chart. Pick a clinician below; the Go SDK
+          evaluates the flag for them and the chart updates to show exactly what that person
+          is allowed to see.
         </p>
-        <p class="section-title">Targeting rules configured in LaunchDarkly</p>
-        <ul style="font-size:.83rem;color:var(--muted);line-height:2;padding-left:1.25rem">
-          <li>Individual: <code>dr.chen@helixhealth.org</code> → <strong>ON</strong></li>
-          <li>Individual: <code>mary.johnson@helixhealth.org</code> → <strong>ON</strong></li>
-          <li>Rule 1: <code>department = maternity</code> AND <code>role = attending</code> → ON</li>
-          <li>Rule 2: <code>department = maternity</code> AND <code>role = charge_nurse</code> → ON</li>
-          <li>Rule 3: <code>hospitalTier = level1</code> AND <code>hasBirthCenter = true</code> → ON</li>
-          <li>Default → <strong>OFF</strong></li>
-        </ul>
       </div>
 
+      <p class="section-title" style="margin:0 0 .75rem">View the patient chart as…</p>
       <div class="personas">
-        <div class="persona-card" onclick="checkFeature(this, {userId:'dr.chen@helixhealth.org',name:'Dr. Chen',department:'maternity',role:'attending',hospitalTier:'level1',hasBirthCenter:true})">
-          <div class="name">Dr. Sarah Chen</div>
-          <div class="attrs">Chief OB · Maternity<br>Level 1 Trauma · Birth Center</div>
-          <div class="tag">Individual target</div>
+        <div class="persona-card" onclick="checkFeature(this, {userId:'dr.alvarez@helixhealth.org',name:'Dr. Alvarez',department:'maternity',role:'attending'})">
+          <div class="name">Dr. Maria Alvarez</div>
+          <div class="attrs">OB Attending</div>
+          <div class="tag">Dept: Maternity</div>
         </div>
-        <div class="persona-card" onclick="checkFeature(this, {userId:'dr.patel@helixhealth.org',name:'Dr. Patel',department:'maternity',role:'attending',hospitalTier:'level2',hasBirthCenter:true})">
-          <div class="name">Dr. Raj Patel</div>
-          <div class="attrs">OB Attending · Maternity<br>Level 2 Hospital · Birth Center</div>
-          <div class="tag">Rule 1 match</div>
+        <div class="persona-card" onclick="checkFeature(this, {userId:'g.liu@helixhealth.org',name:'Grace Liu',department:'maternity',role:'charge_nurse'})">
+          <div class="name">Grace Liu, RN</div>
+          <div class="attrs">Charge Nurse</div>
+          <div class="tag">Dept: Maternity</div>
         </div>
-        <div class="persona-card" onclick="checkFeature(this, {userId:'mary.johnson@helixhealth.org',name:'Mary Johnson',department:'maternity',role:'charge_nurse',hospitalTier:'level1',hasBirthCenter:true})">
-          <div class="name">Mary Johnson, RN</div>
-          <div class="attrs">Head of Nursing · Maternity<br>Level 1 · Birth Center</div>
-          <div class="tag">Individual target</div>
-        </div>
-        <div class="persona-card" onclick="checkFeature(this, {userId:'nurse.kim@helixhealth.org',name:'Nurse Kim',department:'general',role:'floor_nurse',hospitalTier:'community',hasBirthCenter:false})">
-          <div class="name">Nurse Kim</div>
-          <div class="attrs">Floor Nurse · General Ward<br>Community Hospital</div>
-          <div class="tag" style="background:#fde8e8;color:#8b1a1a">No match — Default OFF</div>
-        </div>
-        <div class="persona-card" onclick="checkFeature(this, {userId:'admin@helixhealth.org',name:'Admin User',department:'ed',role:'attending',hospitalTier:'level1',hasBirthCenter:true})">
-          <div class="name">Dr. Torres</div>
-          <div class="attrs">ED Attending · Emergency<br>Level 1 Trauma · Has Birth Center</div>
-          <div class="tag">Rule 3 match (tier+birthCenter)</div>
+        <div class="persona-card" onclick="checkFeature(this, {userId:'dr.reed@helixhealth.org',name:'Dr. Reed',department:'emergency',role:'attending'})">
+          <div class="name">Dr. Omar Reed</div>
+          <div class="attrs">ED Attending</div>
+          <div class="tag" style="background:#eef1f5;color:var(--muted)">Dept: Emergency</div>
         </div>
       </div>
 
       <div id="target-result" class="card" style="display:none; margin-top:1rem">
-        <h2>Evaluation Result</h2>
         <div id="target-detail"></div>
       </div>
+
+      <!-- The payoff: change who has access, live, and show WHY you'd do it. -->
+      <div class="card" style="border-left:4px solid var(--brand)">
+        <h2>🔓 Change who has access — live, no deploy</h2>
+        <p>
+          <strong>Scenario:</strong> Helix's Emergency Department starts taking maternity
+          overflow on weekends, so leadership decides ER attendings should see the Maternity
+          Care Pathway too. Right now <strong>Dr. Reed (Emergency)</strong> can't — let's grant
+          him access without shipping any code.
+        </p>
+        <ol style="font-size:.85rem;color:var(--text);line-height:1.9;padding-left:1.25rem">
+          <li>In LaunchDarkly, open <code>Flags → helix-maternity-pathway → Targeting</code></li>
+          <li>Find the rule <code>department is one of maternity</code> and add <code>emergency</code> to the list of values</li>
+          <li>Click <strong>Review and save</strong> (add a comment like "ER maternity overflow")</li>
+          <li>Come back here and click <strong>Dr. Reed</strong> again → his chart now shows the full pathway, the same information Dr. Alvarez sees</li>
+        </ol>
+        <p style="font-size:.82rem">
+          That's the whole point: access is a targeting decision owned in the dashboard, not a
+          code change. To undo it, just remove <code>emergency</code> from the rule again.
+        </p>
+      </div>
     </div>
 
 
     <!-- ================================================================ -->
-    <!-- PANEL 2J — Multi-Context (Java service)                          -->
+    <!-- PANEL 2J, Part 3: Config-driven alert (Java service)            -->
     <!-- ================================================================ -->
     <div id="p2j" class="panel">
+      <details class="driver" open>
+        <summary>🎬 Demo driver — Part 3 (Java SDK)</summary>
+        <ol>
+          <li><strong>Check a reading:</strong> enter a systolic blood pressure and click <strong>Check reading</strong>. The Java service compares it against the alert threshold it reads from LaunchDarkly. The default 135 is below the 140 threshold, so it comes back NORMAL.</li>
+          <li><strong>The wow:</strong> in LD, lower <span class="ld-path">helix-bp-alert-threshold</span> from 140 to 130, then check the same 135 reading again → it flips from <strong>NORMAL</strong> to <strong>🚨 ALERT</strong>. No deploy, no restart; the Java SDK read the new threshold live.</li>
+          <li>The alert <em>logic</em> lives in code; the <em>threshold</em> is a <strong>Number</strong> flag the clinical team owns — so a flag here carries configuration, not just on/off.</li>
+          <li><strong>Hit the Java SDK directly (optional):</strong>
+            <div class="cmd"><code>curl "http://localhost:8002/lab-check?value=135"</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+        </ol>
+      </details>
       <div class="card">
-        <span class="badge badge-part">Part 2 — Extra</span>
+        <span class="badge badge-part">Part 3</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Java SDK</span>
-        <h2 style="margin-top:.5rem">Multi-Context Evaluation</h2>
+        <h2 style="margin-top:.5rem">Configuration, Not Just On/Off</h2>
         <p>
-          The Java service evaluates <strong>helix-maternity-pathway</strong> against
-          a <em>multi-context</em>: a <code>user</code> context (the individual provider)
-          AND an <code>organization</code> context (the hospital) simultaneously.
-          An enterprise-plan hospital can unlock the feature for its entire staff
-          even if individual user attributes don't match a rule.
+          Flags aren't only switches — they can carry a <em>value</em> your code reads at
+          runtime. A developer built this blood-pressure alert; the clinical team owns the
+          threshold and tunes it from LaunchDarkly with no deploy. The Java service reads
+          <strong>helix-bp-alert-threshold</strong> (a <strong>Number</strong> flag, default
+          140&nbsp;mmHg) and decides whether a reading should raise an alert.
         </p>
-      </div>
-
-      <div class="card">
-        <div class="row">
-          <div>
-            <label>Provider ID</label>
-            <input type="text" id="mc-user" value="dr.new@helixhealth.org" />
-          </div>
-          <div>
-            <label>Role</label>
-            <select id="mc-role">
-              <option value="attending">Attending</option>
-              <option value="resident">Resident</option>
-              <option value="charge_nurse">Charge Nurse</option>
-              <option value="floor_nurse">Floor Nurse</option>
-            </select>
-          </div>
-          <div>
-            <label>Department</label>
-            <select id="mc-dept">
-              <option value="general">General</option>
-              <option value="maternity">Maternity</option>
-              <option value="ed">Emergency</option>
-            </select>
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>Organisation ID</label>
-            <input type="text" id="mc-org" value="helix-northwest" />
-          </div>
-          <div>
-            <label>Org Plan</label>
-            <select id="mc-plan">
-              <option value="standard">Standard</option>
-              <option value="enterprise">Enterprise</option>
-              <option value="community">Community</option>
-            </select>
-          </div>
-          <div>
-            <label>Has Birth Center</label>
-            <select id="mc-birth">
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="checkMultiContext()">Evaluate Multi-Context</button>
-        <div id="mc-result" style="margin-top:1rem"></div>
-      </div>
-
-      <!-- Experimentation event tracker -->
-      <div class="card" style="border-left:4px solid var(--accent)">
-        <h2>📊 Track Experimentation Event</h2>
-        <p>
-          Fires a custom metric event (<code>maternity-pathway-engaged</code>) to
-          LaunchDarkly Experimentation.  Wire the helix-maternity-pathway flag to
-          an LD Experiment and attach this metric — LD will show you which flag
-          variation drives more engagement.
-        </p>
-        <button class="btn btn-accent btn-sm" onclick="trackEvent()">
-          Track "maternity-pathway-engaged" Event
+        <label>Systolic blood pressure (mmHg)</label>
+        <input type="number" id="lab-value" value="135" min="0" max="300" />
+        <button class="btn btn-primary" onclick="checkLab()">
+          Check reading
+          <div id="lab-spinner" class="spinner"></div>
         </button>
-        <div id="track-result" style="margin-top:.5rem;font-size:.82rem;color:var(--ok);display:none">
-          ✓ Event tracked in LaunchDarkly Experimentation
-        </div>
+        <div id="lab-result" style="margin-top:1.25rem"></div>
       </div>
     </div>
 
 
     <!-- ================================================================ -->
-    <!-- PANEL AI — AI Config: Auto-Scribe                                -->
+    <!-- PANEL AI, AI Config: Auto-Scribe                                -->
     <!-- ================================================================ -->
     <div id="ai" class="panel">
+      <details class="driver" open>
+        <summary>🎬 Demo driver — AI Config (swap the model)</summary>
+        <ol>
+          <li><strong>ED persona:</strong> select <strong>ED</strong> below and click <strong>Generate Codes via AI Config</strong> → served by HELIX-SCRIBE-ED (Haiku).</li>
+          <li><strong>OB persona:</strong> select <strong>OB</strong> and generate again → served by HELIX-SCRIBE-OB (Sonnet). Same flag, different model — zero code change.</li>
+          <li><strong>Live switch:</strong> in LaunchDarkly open <span class="ld-path">AI Configs → helix-clinical-ai</span>, change a variation's model or instructions, then <strong>Save</strong>. Click Generate again — the next call uses the new config instantly.</li>
+          <li><strong>Hit the AI Config SDK directly (optional):</strong>
+            <div class="cmd"><code>curl -X POST http://localhost:8000/code-encounter -H "Content-Type: application/json" -d '{"transcript":"rib fractures 4-7, small left pneumothorax, chest tube placed","department":"ed","userId":"demo"}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+        </ol>
+      </details>
       <div class="card">
         <span class="badge badge-part">Extra Credit</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
-        <h2 style="margin-top:.5rem">AI Config — helix-clinical-ai</h2>
+        <h2 style="margin-top:.5rem">AI Config: helix-clinical-ai</h2>
         <p>
           Three AI personas, one flag, zero code changes.  The <strong>helix-clinical-ai</strong>
           AI Config in LaunchDarkly controls which Claude model and system prompt are
@@ -521,12 +709,12 @@
             <tr>
               <td style="padding:.5rem;border-bottom:1px solid var(--border)"><strong>HELIX-SCRIBE-ED</strong></td>
               <td style="padding:.5rem;border-bottom:1px solid var(--border)">claude-haiku-4-5</td>
-              <td style="padding:.5rem;border-bottom:1px solid var(--border)">ED coding — ICD-10 S/T, emergency CPTs</td>
+              <td style="padding:.5rem;border-bottom:1px solid var(--border)">ED coding: ICD-10 S/T, emergency CPTs</td>
             </tr>
             <tr>
               <td style="padding:.5rem;border-bottom:1px solid var(--border)"><strong>HELIX-SCRIBE-OB</strong></td>
               <td style="padding:.5rem;border-bottom:1px solid var(--border)">claude-sonnet-4-5</td>
-              <td style="padding:.5rem;border-bottom:1px solid var(--border)">OB coding — obstetric ICD-10 O/Z, delivery CPTs</td>
+              <td style="padding:.5rem;border-bottom:1px solid var(--border)">OB coding: obstetric ICD-10 O/Z, delivery CPTs</td>
             </tr>
             <tr>
               <td style="padding:.5rem"><strong>HELIX-PARENT</strong></td>
@@ -558,25 +746,37 @@
           Generate Codes via AI Config
           <div id="ai-spinner" class="spinner"></div>
         </button>
-        <div id="coding-result-ai" class="card" style="margin-top:1rem;display:none;background:#1a2333;color:#e2e8f0;font-family:monospace;font-size:.82rem;white-space:pre-wrap"></div>
+        <div id="coding-result-ai" class="card" style="margin-top:1rem;display:none;background:#1a2333;color:#e2e8f0;font-family:monospace;font-size:.82rem;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere"></div>
       </div>
     </div>
 
 
     <!-- ================================================================ -->
-    <!-- PANEL PARENT — Parent Connect                                     -->
+    <!-- PANEL PARENT, Parent Connect                                     -->
     <!-- ================================================================ -->
     <div id="parent" class="panel">
+      <details class="driver" open>
+        <summary>🎬 Demo driver — Parent Connect</summary>
+        <ol>
+          <li><strong>Normal guidance:</strong> click <strong>Sample: Fever</strong>, then <strong>Send</strong> → warm reply from the HELIX-PARENT variation (Sonnet).</li>
+          <li><strong>Escalation:</strong> click <strong>Sample: Breathing</strong>, then <strong>Send</strong> → the red 🚨 emergency banner appears (escalation heuristic on the response).</li>
+          <li><strong>Live prompt update:</strong> edit the HELIX-PARENT variation in <span class="ld-path">AI Configs → helix-clinical-ai</span>, <strong>Save</strong>, and send again — new guidance, no deploy.</li>
+          <li><strong>Graceful fallback:</strong> disable <span class="ld-path">helix-clinical-ai</span> in LD and send a message → the UI falls back to the 24/7 nurse-line message.</li>
+          <li><strong>Hit the SDK directly (optional):</strong>
+            <div class="cmd"><code>curl -X POST http://localhost:8000/parent-connect -H "Content-Type: application/json" -d '{"message":"my 3-week-old has had a fever of 100.8 for 2 hours","userId":"parent-demo"}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+        </ol>
+      </details>
       <div class="card">
-        <span class="badge badge-part">Extra Credit — AgentControl</span>
+        <span class="badge badge-part">Extra Credit: AgentControl</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
         <h2 style="margin-top:.5rem">👶 Helix Parent Connect</h2>
         <p>
-          24/7 AI-powered guidance for new parents — the "my baby at 2am" feature.
+          24/7 AI-powered guidance for new parents: the "my baby at 2am" feature.
           Uses the <strong>HELIX-PARENT</strong> variation of <code>helix-clinical-ai</code>:
           Claude Sonnet with a warm, empathetic system prompt focused on newborn care.
           When the AAP publishes new fever guidelines, the clinical team updates the
-          prompt in LaunchDarkly — no engineering ticket, no deployment, active in seconds.
+          prompt in LaunchDarkly: no engineering ticket, no deployment, active in seconds.
         </p>
         <p>
           If <code>helix-clinical-ai</code> is disabled, the UI gracefully falls back to
@@ -588,7 +788,7 @@
         <div class="chat-messages" id="chat-messages">
           <div class="msg bot">
             Hi, I'm the Helix Parent Connect assistant. I'm here to help with questions
-            about your newborn — day or night. What's on your mind?
+            about your newborn, day or night. What's on your mind?
           </div>
         </div>
         <div id="escalate-banner" class="escalate-banner">
@@ -598,7 +798,7 @@
         <div style="display:flex;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap">
           <button class="btn btn-sm" style="background:#f0f4f8;color:var(--text)" onclick="loadPrompt(`My baby is 3 weeks old and has had a fever of 100.8°F for the last 2 hours. She's eating a little less than usual but still feeding. Should I be worried?`)">Sample: Fever</button>
           <button class="btn btn-sm" style="background:#f0f4f8;color:var(--text)" onclick="loadPrompt(`My 5-day-old won't stop crying for the last hour. He ate 2 hours ago and has a wet diaper. He's not running a fever. I don't know what to do.`)">Sample: Crying</button>
-          <button class="btn btn-sm" style="background:#f0f4f8;color:var(--text)" onclick="loadPrompt(`My 2-week-old baby's breathing looks weird — her chest sucks in when she breathes and she's breathing really fast. She seems sleepy and won't eat.`)">Sample: Breathing</button>
+          <button class="btn btn-sm" style="background:#f0f4f8;color:var(--text)" onclick="loadPrompt(`My 2-week-old baby's breathing looks weird, her chest sucks in when she breathes and she's breathing really fast. She seems sleepy and won't eat.`)">Sample: Breathing</button>
         </div>
 
         <div style="display:flex;gap:.5rem">
@@ -618,7 +818,7 @@
 
 <script>
   // -----------------------------------------------------------------------
-  // Config — update if your services run on different ports
+  // Config: update if your services run on different ports
   // -----------------------------------------------------------------------
   const PYTHON_URL = "http://localhost:8000";
   const GO_URL     = "http://localhost:8001";
@@ -627,26 +827,65 @@
   // -----------------------------------------------------------------------
   // Tab navigation
   // -----------------------------------------------------------------------
-  function showPanel(id) {
+  function showPanel(id, btn) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    event.target.classList.add('active');
+    // Prefer the button passed via onclick (this); fall back to event.target.
+    const tab = btn || (typeof event !== 'undefined' && event.target);
+    if (tab && tab.classList) tab.classList.add('active');
+    // A textarea sized while its panel was hidden measures zero height, so
+    // re-grow any textareas in the panel we just revealed.
+    if (typeof autoGrow === 'function') {
+      document.getElementById(id).querySelectorAll('textarea').forEach(autoGrow);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Copy a command from a "Demo driver" block to the clipboard.
+  // -----------------------------------------------------------------------
+  function copyCmd(btn) {
+    const code = btn.parentElement.querySelector('code');
+    const text = code ? code.textContent : '';
+    const done = ok => {
+      const orig = btn.dataset.label || btn.textContent;
+      btn.dataset.label = orig;
+      btn.textContent = ok ? '✓ Copied' : '⚠ Copy failed';
+      btn.classList.toggle('copied', ok);
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(false));
+    } else {
+      // Fallback for non-secure contexts (e.g. plain http on some browsers).
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(true); } catch { done(false); }
+      document.body.removeChild(ta);
+    }
   }
 
   // -----------------------------------------------------------------------
   // Part 1: SSE listener
   // The browser connects once to /events.  When helix-auto-scribe is toggled
-  // in LaunchDarkly the server pushes an event here — no polling, no reload.
+  // in LaunchDarkly the server pushes an event here, no polling, no reload.
   // -----------------------------------------------------------------------
   const badge  = document.getElementById('flag-badge');
   const label  = document.getElementById('flag-label');
-  const scribe = document.getElementById('scribe-panel');
+  const scribe = document.getElementById('scribe-panel');   // the AI "after" panel
+  const manual = document.getElementById('manual-panel');   // the manual "before" panel
 
   function applyFlagState(enabled) {
     badge.className  = enabled ? 'on' : 'off';
     label.textContent = `Auto-Scribe: ${enabled ? 'ON' : 'OFF'}`;
+    // Flag ON  → reveal the AI Auto-Scribe panel, hide the manual workflow.
+    // Flag OFF → reveal the manual coding workflow, hide the AI panel.
     scribe.classList.toggle('hidden', !enabled);
+    manual.classList.toggle('hidden', enabled);
+    // A textarea sized while its panel was hidden measures zero height, so
+    // re-grow the textareas in whichever panel we just revealed.
+    const shown = enabled ? scribe : manual;
+    if (typeof autoGrow === 'function') shown.querySelectorAll('textarea').forEach(autoGrow);
   }
 
   const evtSource = new EventSource(`${PYTHON_URL}/events`);
@@ -656,7 +895,7 @@
   };
   evtSource.onerror = () => {
     document.getElementById('sse-indicator').innerHTML =
-      '<span style="color:var(--danger)">⚠ SSE disconnected — is the Python service running?</span>';
+      '<span style="color:var(--danger)">⚠ SSE disconnected. Is the Python service running?</span>';
   };
 
   // -----------------------------------------------------------------------
@@ -702,12 +941,52 @@
     const samples = {
       ob: `Patient is a 32-year-old G2P1 at 39 weeks gestation presenting for scheduled delivery. Labor was induced with oxytocin. Normal spontaneous vaginal delivery. Apgar scores 8 and 9. Placenta delivered intact. Estimated blood loss 250mL. Postpartum course uncomplicated. Mother and infant in stable condition.`
     };
-    document.getElementById('transcript').value = samples[dept] || '';
+    const ta = document.getElementById('transcript');
+    ta.value = samples[dept] || '';
     document.getElementById('dept-select').value = dept;
+    autoGrow(ta);   // resize the box to fit the sample we just dropped in
   }
 
   // -----------------------------------------------------------------------
-  // Part 2: Targeting — Go service
+  // Manual coding workflow (the "before", shown when the flag is OFF).
+  // These functions deliberately call no backend — their only purpose is to
+  // make the manual process feel as tedious as it really is, so the AI panel
+  // lands harder by contrast.
+  // -----------------------------------------------------------------------
+  function addManualCode() {
+    // Pile on another diagnosis dropdown to drive home how much hand-work this is.
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <label>Additional diagnosis (ICD-10)</label>
+      <select class="m-icd">
+        <option value="">— search the ICD-10 manual —</option>
+        <option>S27.0XXA — Traumatic pneumothorax, initial encounter</option>
+        <option>R09.02 — Hypoxemia</option>
+        <option>S20.211A — Contusion of left front chest wall, initial</option>
+        <option>R06.02 — Shortness of breath</option>
+        <option>R07.9 — Chest pain, unspecified</option>
+        <option>I10 — Essential (primary) hypertension</option>
+        <option>F17.210 — Nicotine dependence, cigarettes</option>
+      </select>`;
+    document.getElementById('manual-extra').appendChild(wrap);
+  }
+
+  function submitManualCodes() {
+    const out = document.getElementById('manual-result');
+    const codes = [...document.querySelectorAll('#manual-panel .m-icd, #manual-panel .m-cpt')]
+      .map(s => s.value).filter(Boolean);
+    out.style.display = 'block';
+    if (codes.length === 0) {
+      out.style.color = 'var(--danger)';
+      out.textContent = '⚠ Nothing selected yet — you still have to find and enter every code by hand, for this encounter and the next one, all shift long.';
+    } else {
+      out.style.color = 'var(--muted)';
+      out.innerHTML = `Submitted ${codes.length} code(s) for one encounter. Now repeat this for every patient, around 20 minutes each. <strong>That is the workload helix-auto-scribe removes when you flip it on.</strong>`;
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Part 2: Targeting, Go service
   // -----------------------------------------------------------------------
   async function checkFeature(card, ctx) {
     document.querySelectorAll('.persona-card').forEach(c => c.style.outline = '');
@@ -716,82 +995,111 @@
     const resultDiv  = document.getElementById('target-result');
     const detailDiv  = document.getElementById('target-detail');
     resultDiv.style.display = 'block';
-    detailDiv.textContent = 'Evaluating…';
+    detailDiv.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Evaluating with the Go SDK…</p>';
 
     try {
       const params = new URLSearchParams({
         userId: ctx.userId, name: ctx.name,
-        department: ctx.department, role: ctx.role,
-        hospitalTier: ctx.hospitalTier, hasBirthCenter: ctx.hasBirthCenter
+        department: ctx.department, role: ctx.role
       });
       const resp = await fetch(`${GO_URL}/feature?${params}`);
       const data = await resp.json();
 
-      const pill = `<span class="result-pill ${data.enabled ? 'on' : 'off'}">
-        ${data.enabled ? '✓ Access Granted' : '✗ Access Denied'}
-      </span>`;
-
-      detailDiv.innerHTML = `
-        ${pill}
-        <p style="margin-top:.75rem;font-size:.85rem">
-          <strong>Flag:</strong> ${data.flag}<br>
-          <strong>Reason:</strong> <code>${data.reason}</code><br>
-          <strong>User:</strong> ${data.userId}
-        </p>
-        <details style="margin-top:.5rem;font-size:.8rem">
-          <summary style="cursor:pointer;color:var(--muted)">Context attributes sent to LD</summary>
-          <pre style="margin-top:.5rem;padding:.75rem;background:#f4f6f9;border-radius:6px">${JSON.stringify(data.context, null, 2)}</pre>
+      const chart = data.enabled ? pathwayChart(ctx) : standardChart(ctx);
+      const evalDetail = `
+        <details class="eval-detail">
+          <summary>LaunchDarkly evaluation detail</summary>
+          <p class="ev-line">Flag <code>${data.flag}</code> · result <code>${data.enabled}</code> · reason <code>${data.reason}</code> · user <code>${data.userId}</code></p>
+          <pre>${JSON.stringify(data.context, null, 2)}</pre>
         </details>`;
+      detailDiv.innerHTML = chart + evalDetail;
     } catch(e) {
-      detailDiv.textContent = `Error: ${e.message} — is the Go service running on port 8001?`;
+      detailDiv.innerHTML = `<p style="color:var(--danger)">Error: ${e.message}. Is the Go service running on port 8001?</p>`;
     }
   }
 
+  // Access GRANTED: this clinician can see the full Maternity Care Pathway —
+  // the stage tracker, the care plan, and the order sets. (No AI here; this is
+  // simply the gated patient information being shown.)
+  function pathwayChart(ctx) {
+    return `
+      <div class="chart pathway">
+        <div class="chart-head">
+          <div><strong>Jane Doe</strong> · 32F · G2P1 · 39w2d · MRN 558203</div>
+          <span class="chart-tag granted">✓ Maternity Care Pathway — full access</span>
+        </div>
+        <div class="stage-tracker">
+          <span class="stage done">Prenatal</span>
+          <span class="stage done">Triage</span>
+          <span class="stage current">Labor &amp; Delivery</span>
+          <span class="stage">Postpartum</span>
+        </div>
+        <div class="care-plan"><strong>Care plan &amp; history:</strong> Low-risk term pregnancy, GBS-positive — Group B strep prophylaxis ordered. Epidural requested at 4&nbsp;cm dilation. Prior delivery 2022, uncomplicated.</div>
+        <div class="order-chips">
+          <span class="chip">Order set: Active Labor</span>
+          <span class="chip warn">Risk: GBS+</span>
+          <span class="chip">Anesthesia: Epidural</span>
+          <span class="chip">Fetal monitoring: Continuous</span>
+        </div>
+        <p class="chart-foot"><strong>${ctx.name}</strong> can see this because the <strong>${ctx.department}</strong> department is granted access to the Maternity Care Pathway.</p>
+      </div>`;
+  }
+
+  // Access DENIED: everyone outside the rule sees only the plain standard chart;
+  // the pathway information above is hidden from them.
+  function standardChart(ctx) {
+    return `
+      <div class="chart standard">
+        <div class="chart-head">
+          <div><strong>Jane Doe</strong> · 32F · MRN 558203</div>
+          <span class="chart-tag denied">Standard chart — no pathway access</span>
+        </div>
+        <ul class="vitals">
+          <li>BP 122/78</li><li>HR 84</li><li>Temp 98.6°F</li><li>SpO₂ 99%</li>
+        </ul>
+        <div class="locked-note">🔒 <strong>${ctx.name}</strong> is in the <strong>${ctx.department}</strong> department, which isn't granted the Maternity Care Pathway — so the care plan, stage tracker, and order sets are hidden. They see only the standard chart.</div>
+      </div>`;
+  }
+
   // -----------------------------------------------------------------------
-  // Multi-context (Java service)
+  // Part 3: Configuration as a flag (Java service)
+  // A developer built the blood-pressure alert; the THRESHOLD it compares
+  // against is a LaunchDarkly Number flag the clinical team controls. We send
+  // the reading to the Java service, which reads the flag and tells us whether
+  // the reading crosses the dashboard-controlled threshold.
   // -----------------------------------------------------------------------
-  async function checkMultiContext() {
-    const result = document.getElementById('mc-result');
-    result.style.display = 'none';
-    const params = new URLSearchParams({
-      userId:       document.getElementById('mc-user').value,
-      role:         document.getElementById('mc-role').value,
-      department:   document.getElementById('mc-dept').value,
-      orgId:        document.getElementById('mc-org').value,
-      orgPlan:      document.getElementById('mc-plan').value,
-      hasBirthCenter: document.getElementById('mc-birth').value
-    });
+  async function checkLab() {
+    const spinner = document.getElementById('lab-spinner');
+    const out = document.getElementById('lab-result');
+    const value = document.getElementById('lab-value').value;
+    spinner.classList.add('visible');
     try {
-      const resp = await fetch(`${JAVA_URL}/feature/multi-context?${params}`);
+      const resp = await fetch(`${JAVA_URL}/lab-check?value=${encodeURIComponent(value)}`);
       const data = await resp.json();
-      result.style.display = 'block';
-      result.classList.add('visible');
-      result.textContent = JSON.stringify(data, null, 2);
+      const alert = data.alert;
+      out.innerHTML = `
+        <div class="eval-status ${alert ? 'off' : 'on'}">
+          <div class="eval-badge">${alert ? '🚨 ALERT' : '✅ NORMAL'}</div>
+          <div class="eval-meta">
+            ${data.value} mmHg ${alert ? '≥' : '&lt;'} the alert threshold of <strong>${data.threshold}</strong> mmHg<br>
+            threshold from <code>${data.flag}</code> · read by the Java SDK just now
+          </div>
+        </div>
+        <p style="font-size:.8rem;color:var(--muted);margin:.75rem 0 0">Change <strong>${data.flag}</strong> in LaunchDarkly and check the same reading again — the alert behaviour updates instantly, no deploy.</p>`;
     } catch(e) {
-      result.style.display = 'block';
-      result.textContent = `Error: ${e.message} — is the Java service running on port 8002?`;
+      out.innerHTML = `<p style="color:var(--danger)">Error: ${e.message}. Is the Java service running on port 8002?</p>`;
+    } finally {
+      spinner.classList.remove('visible');
     }
-  }
-
-  async function trackEvent() {
-    const userId = document.getElementById('mc-user').value || 'demo-user';
-    try {
-      await fetch(`${JAVA_URL}/track-event`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, eventName: 'maternity-pathway-engaged', value: 1 })
-      });
-      const el = document.getElementById('track-result');
-      el.style.display = 'block';
-      setTimeout(() => el.style.display = 'none', 3000);
-    } catch(e) { alert(`Error: ${e.message}`); }
   }
 
   // -----------------------------------------------------------------------
   // Parent Connect chat
   // -----------------------------------------------------------------------
   function loadPrompt(text) {
-    document.getElementById('parent-msg').value = text;
+    const ta = document.getElementById('parent-msg');
+    ta.value = text;
+    autoGrow(ta);   // grow the input to fit the sample question
   }
 
   async function sendParentMessage() {
@@ -806,6 +1114,7 @@
     // Render user message
     chat.innerHTML += `<div class="msg user">${msg}</div>`;
     msgEl.value = '';
+    autoGrow(msgEl);   // collapse the input back to one line after sending
     banner.classList.remove('visible');
     spinner.classList.add('visible');
     chat.scrollTop = chat.scrollHeight;
@@ -836,6 +1145,24 @@
   document.getElementById('parent-msg').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendParentMessage(); }
   });
+
+  // -----------------------------------------------------------------------
+  // Auto-grow text areas: keep each textarea exactly as tall as its content
+  // so it never needs a vertical scrollbar, and re-flow it when the window
+  // resizes (a narrower window wraps the same text onto more lines). Combined
+  // with width:100% in the CSS, the boxes expand and shrink fluidly and never
+  // show a horizontal or vertical scrollbar.
+  // -----------------------------------------------------------------------
+  function autoGrow(el) {
+    el.style.height = 'auto';                  // reset first so the box can shrink
+    el.style.height = el.scrollHeight + 'px';  // then grow to fit the content
+  }
+  const _textareas = [...document.querySelectorAll('textarea')];
+  _textareas.forEach(t => {
+    autoGrow(t);                               // size each box to its initial content
+    t.addEventListener('input', () => autoGrow(t));
+  });
+  window.addEventListener('resize', () => _textareas.forEach(autoGrow));
 </script>
 </body>
 </html>

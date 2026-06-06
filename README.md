@@ -1,6 +1,6 @@
 # Helix Health Group: LaunchDarkly SE Demo
 
-Three-service demo built with **Python**, **Go**, and **Java**. Covers feature flag release, instant rollback, context-based targeting, multi-context evaluation, Experimentation, and AI Config.
+Three-service demo built with **Python**, **Go**, and **Java**. Covers feature flag release, instant rollback, context-based targeting, configuration-driven features (a Number flag), and AI Config.
 
 ---
 
@@ -14,7 +14,7 @@ Three engineering teams are shipping simultaneously:
 |------|---------|-----|---------------------|
 | Clinical AI team | `python-service` | Python + LD AI SDK | Part 1: Release & Remediate + Extra: AI Config |
 | Patient Access team | `go-service` | Go | Part 2: Targeting |
-| Analytics team | `java-service` | Java (Spring Boot) | Part 2: Multi-context + Experimentation |
+| Patient Safety team | `java-service` | Java (Spring Boot) | Part 3: Config-driven clinical alert |
 
 `frontend/index.html` is a single-file clinical dashboard. No build step; open directly in Chrome.
 
@@ -29,6 +29,42 @@ Three engineering teams are shipping simultaneously:
 | Java | 17+ | `java -version` |
 | Maven | 3.6+ | `mvn -version` |
 | Chrome | Any | For the frontend |
+
+Validated against Python 3.12, Go 1.26, Temurin (Eclipse Adoptium) JDK 17, and Maven 3.9.
+
+### Verify your environment
+
+Before creating flags or starting services, run the bundled prerequisite checker. It confirms your toolchain versions, that `.env` holds the three required credentials, that the Python packages are importable, and which service ports are free:
+
+```bash
+python scripts/check_prerequisites.py
+```
+
+Exit code `0` means every required check passed (warnings do not fail the run). Sample output:
+
+```
+==============================================================
+ Helix Health Group: LaunchDarkly demo prerequisite check
+==============================================================
+
+Toolchain
+---------
+ [ OK ]  Python  ->  3.12.10  (>= 3.10)
+ [ OK ]  Go      ->  1.26.4  (>= 1.21)
+ [ OK ]  Java    ->  17.0.19  (>= 17)
+ [ OK ]  Maven   ->  3.9.9  (>= 3.6)
+
+Environment (.env)
+------------------
+ [ OK ]  .env file  ->  /path/to/LD_Helix_Demo/.env
+ [ OK ]  ANTHROPIC_API_KEY  ->  sk-ant-...  (108 chars)
+ [ OK ]  LD_SERVER_SDK_KEY  ->  sdk-f18...  (40 chars)
+ [ OK ]  LD_CLIENT_SIDE_ID  ->  6a1e36e...  (24 chars)
+...
+ RESULT: all required checks passed
+```
+
+The checker masks secrets (it prints only a short prefix and the length), so its output is safe to paste into an issue or share while pairing.
 
 ---
 
@@ -58,11 +94,32 @@ ANTHROPIC_API_KEY="sk-ant-api03-..."
 # LaunchDarkly Test environment server-side key (Organization settings > SDK keys)
 LD_SERVER_SDK_KEY="sdk-..."      # used by Python, Go, Java (keep secret)
 LD_CLIENT_SIDE_ID="..."          # used by browser JS (safe to expose)
+
+# REST API access token, used to turn the flag on/off from the command line in
+# Part 1 (Account settings > Authorization > Access tokens; write access to Test).
+LD_API_TOKEN="api-..."           # keep secret
 ```
 
 > **Never commit `.env`.** It is gitignored.
 
-### 3. Create LaunchDarkly flags
+Before running the Part 1 curl commands, export the API token in your shell so `$LD_API_TOKEN` resolves:
+>
+> ```bash
+> export LD_API_TOKEN=api-...          # bash / zsh
+> $env:LD_API_TOKEN="api-..."          # PowerShell
+> ```
+
+### 3. Run the prerequisite check
+
+Confirm your toolchain, credentials, and ports before going further:
+
+```bash
+python scripts/check_prerequisites.py
+```
+
+Fix any `[FAIL]` items it reports, then continue. (See [Verify your environment](#verify-your-environment) above for sample output.)
+
+### 4. Create LaunchDarkly flags
 
 Log in to [app.launchdarkly.com](https://app.launchdarkly.com) and create the following in your **Test** environment.
 
@@ -75,30 +132,26 @@ Controls the AI clinical transcription and billing-code feature. Used in Part 1.
 1. **Features → Flags → Create flag**
 2. Name: `Helix Auto-Scribe`  |  Key: `helix-auto-scribe`  |  Type: Boolean
 3. Default OFF. Leave targeting rules empty for now.
-4. Set up a trigger for the Remediate demo:
-   - Open the flag → **Settings** tab → **Triggers** → **Add trigger**
-   - Type: **Generic trigger**
-   - Action: **Turn flag off**
-   - Copy the generated URL and keep it handy for the demo
+4. No per-flag trigger is needed — the Remediate step turns this flag off from the
+   command line via the LaunchDarkly REST API, using the account-level `LD_API_TOKEN`
+   you set in step 2. (Flag *triggers* are a valid no-token webhook alternative if you
+   want your monitoring system to flip the flag directly; not required for this demo.)
 
 ---
 
 #### Flag 2: `helix-maternity-pathway` (Boolean with targeting)
 
-Controls the maternity pathway rollout. Used in Part 2.
+Controls who sees the new Maternity Care Pathway module. Used in Part 2.
 
 1. **Features → Flags → Create flag**
 2. Name: `Helix Maternity Pathway`  |  Key: `helix-maternity-pathway`  |  Type: Boolean
 3. Turn targeting ON in the Test environment
-4. Add individual targets:
-   - `dr.chen@helixhealth.org` → **true**
-   - `mary.johnson@helixhealth.org` → **true**
-5. Add rules in this order:
-   - Rule 1: `department` **is one of** `maternity` AND `role` **is one of** `attending` → **true**
-   - Rule 2: `department` **is one of** `maternity` AND `role` **is one of** `charge_nurse` → **true**
-   - Rule 3: `hospitalTier` **is one of** `level1` AND `hasBirthCenter` **is** `true` → **true**
-6. Default rule → **false**
-7. Save
+4. Add one rule:
+   - Rule 1: `department` **is one of** `maternity` → serve **true**
+5. Default rule → **false**
+6. Save
+
+> **One-rule story (recommended).** The demo tells a clean story — *maternity staff see the Pathway, everyone else gets the standard chart* — so a single `department is maternity` rule is all you need. You can layer on more targeting later (individual pilot users, role conditions, hospital tier, percentage rollouts) entirely from the dashboard with no code change. The demo personas (Dr. Alvarez, Grace Liu, Dr. Reed) resolve correctly under this single rule; they also work if you keep additional rules.
 
 ---
 
@@ -149,6 +202,19 @@ Reference current AAP guidelines when relevant.
    - `department` **is one of** `maternity-parent`, `postpartum` → serve Variation 3
    - Default → serve Variation 1 (ED)
 5. Enable the config
+
+---
+
+#### Flag 4: `helix-bp-alert-threshold` (Number)
+
+Controls the blood-pressure threshold the Java service uses to raise an alert. Used in Part 3.
+
+1. **Features → Flags → Create flag**
+2. Name: `Helix BP Alert Threshold`  |  Key: `helix-bp-alert-threshold`  |  Type: **Number**
+3. Set the variation value to **`140`** (mmHg — the usual preeclampsia screening cut-off) and make it the default served value
+4. Save. During the demo you'll change this number (e.g. to `130`) and watch the same reading flip from NORMAL to ALERT — no redeploy.
+
+> The Java service defaults to `140` if this flag is missing, so Part 3 still runs before you create it; creating the flag is what lets you change the threshold live.
 
 ---
 
@@ -206,7 +272,7 @@ python -m http.server 3000
 Open **http://localhost:3000** in Chrome.
 
 > The Python service must be running for the SSE listener to work.  
-> Go and Java are needed for the targeting and multi-context demo tabs.
+> Go and Java are needed for the Part 2 (targeting) and Part 3 (evaluate) demo tabs.
 
 ---
 
@@ -216,30 +282,46 @@ Open **http://localhost:3000** in Chrome.
 
 1. Open the **Part 1 Release** tab in the dashboard
 2. The `helix-auto-scribe` badge shows **OFF**
-3. In LaunchDarkly, toggle `helix-auto-scribe` **ON**
-4. The Auto-Scribe panel appears instantly with no page reload
+3. **Release:** in LaunchDarkly, toggle `helix-auto-scribe` **ON** (or run the REST call below with `turnFlagOn`)
+4. The Auto-Scribe panel appears instantly with no page reload — the Python service streams the change to the browser over SSE
 5. Select a department, load a sample encounter, click **Generate Billing Codes**
 6. Claude returns structured ICD-10 and CPT codes
-7. To remediate, run the trigger curl command from the Remediate card:
+7. **Remediate:** turn the flag off via the LaunchDarkly REST API — from curl, Postman, or your monitoring tool. Uses `$LD_API_TOKEN` (the project key is `default` unless you created a custom project):
    ```bash
-   curl -X POST "https://app.launchdarkly.com/api/v1/flags/triggers/YOUR_TRIGGER_URL"
+   curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" \
+     -H "Authorization: $LD_API_TOKEN" \
+     -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" \
+     -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'
    ```
-8. The panel disappears. Flag is OFF, no deployment needed.
+   (Swap `turnFlagOff` → `turnFlagOn` to release it again.)
+8. The panel disappears instantly over SSE. Flag is OFF, no deployment needed.
 
-### Part 2: Targeting
+> **Sending it from Postman:** method `PATCH`, same URL. Headers: `Authorization: <your token>` (no "Bearer" prefix) and `Content-Type: application/json; domain-model=launchdarkly.semanticpatch`. Body → raw JSON: `{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}`.
+> ⚠️ Postman auto-adds `Content-Type: application/json` when you pick raw/JSON — **edit it** to keep the `; domain-model=launchdarkly.semanticpatch` suffix, or LD returns `400`.
+
+### Part 2: Targeting — Maternity Care Pathway
+
+The story: *Helix is rolling out a new Maternity Care Pathway module. Maternity staff see it; everyone else keeps the standard chart.* One rule decides — `department is maternity → ON`, default OFF.
 
 1. Open the **Part 2 Target** tab
-2. Click each persona card. The Go service evaluates the flag and returns the reason:
-   - `TARGET_MATCH` for Dr. Chen and Mary Johnson (individual targets)
-   - `RULE_MATCH` for Dr. Patel (Rule 1) and Dr. Torres (Rule 3)
-   - `FALLTHROUGH` for Nurse Kim (default OFF)
+2. Click **Dr. Alvarez (Maternity)** → the **Maternity Care Pathway** module renders in the patient chart (stage tracker, care plan, order sets)
+3. Click **Grace Liu, RN (Maternity)** → the same Pathway module — it's the *department*, not the role
+4. Click **Dr. Reed (Emergency)** → the **standard chart** (vitals only) with a "not enabled" note
+5. Expand **"LaunchDarkly evaluation detail"** under the chart to see the SDK reason (`RULE_MATCH` for the maternity staff, `FALLTHROUGH` for Dr. Reed) and the exact context sent
+6. To change who's in, edit the rule in LD (e.g., add `emergency`) and re-click a clinician — the chart re-renders, no redeploy
 
-### Multi-Context (Java)
+> The Go service returns `enabled` + `reason` via `BoolVariationDetail`; the UI renders the Pathway module when `enabled` is `true`, the standard chart when `false`.
 
-1. Open the **Multi-Context** tab
-2. Set `orgPlan = enterprise` for a hospital that doesn't match user-level rules alone
-3. The Java service evaluates against both user and organization context
-4. Click **Track Event** to fire a custom metric into LD Experimentation
+### Part 3: Configuration as a Flag (Java)
+
+Flags aren't only on/off switches — they can carry a value your code reads at runtime. A developer built a blood-pressure alert; the **threshold** it fires at is a LaunchDarkly **Number** flag (`helix-bp-alert-threshold`, default 140 mmHg) that the clinical team owns. The Java service reads it via `GET /lab-check?value=…`.
+
+1. Open the **Part 3: Alerts** tab
+2. Enter a systolic blood pressure (the box defaults to **135**) and click **Check reading** → **✅ NORMAL** (135 is below the 140 threshold)
+3. In LaunchDarkly, lower **`helix-bp-alert-threshold`** from 140 to **130**, then check **135** again → **🚨 ALERT**
+4. Same reading, new behaviour — the Java SDK read the new threshold live. The alert *logic* is in code; the *threshold* is owned in the dashboard, with no redeploy
+
+> The Java service uses `intVariation` with a default of 140, so Part 3 runs even before you create the flag; creating `helix-bp-alert-threshold` (Flag 4 above) is what lets you change the threshold live. This shows flags carrying **configuration**, not just toggles.
 
 ### AI Config
 
@@ -261,8 +343,11 @@ LD_Helix_Demo/
 ├── README.md
 ├── INTEGRATION_GUIDE.md  # how to add LD to an app from scratch
 │
+├── scripts/
+│   └── check_prerequisites.py  # verifies toolchain, .env, pip deps, ports
+│
 ├── python-service/
-│   ├── main.py           # FastAPI: SSE stream, AI Config, flag trigger
+│   ├── main.py           # FastAPI: SSE stream, AI Config, Parent Connect
 │   └── requirements.txt
 │
 ├── go-service/
@@ -274,7 +359,7 @@ LD_Helix_Demo/
 │   └── src/main/java/com/helixhealth/
 │       ├── HelixApplication.java
 │       ├── LdConfig.java
-│       └── FeatureController.java  # multi-context + event tracking
+│       └── FeatureController.java  # GET /lab-check (config-driven alert)
 │
 ├── frontend/
 │   └── index.html        # single-file clinical dashboard, no build step

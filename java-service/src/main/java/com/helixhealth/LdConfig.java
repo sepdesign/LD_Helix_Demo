@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  *
  * The SDK key is loaded from ../.env (project root) via dotenv-java.
  * Replace "LD_SERVER_SDK_KEY" with your Test environment server-side SDK key
- * if you are not using the .env file — or export the environment variable
+ * if you are not using the .env file, or export the environment variable
  * before running: export LD_SERVER_SDK_KEY=sdk-...
  */
 @Configuration

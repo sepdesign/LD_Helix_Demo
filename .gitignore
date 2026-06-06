@@ -1,7 +1,7 @@
-# Secrets — never commit
+# Secrets: never commit
 .env
 
-# Assignment PDF — proprietary, not for public repo
+# Assignment PDF: proprietary, not for public repo
 Candidate_HW_-_SE_2025.pdf
 
 # Python
@@ -13,6 +13,7 @@ venv/
 
 # Go
 go-service/vendor/
+go-service/*.exe
 
 # Java
 java-service/target/
@@ -28,3 +29,7 @@ java-service/.mvn/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local dev server logs
+*.log
+_server_*.log

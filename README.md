@@ -1,6 +1,6 @@
 # Helix Health Group: LaunchDarkly SE Demo
 
-Three-service demo built with **Python**, **Go**, and **Java**. Covers feature flag release, instant rollback, context-based targeting, configuration-driven features (a Number flag), and AI Config.
+Three-service demo built with **Python**, **Go**, and **Java**, plus a single-file browser dashboard. Five parts: (1) feature-flag release & instant rollback, (2) context-based targeting, (3) configuration as a flag (a Number flag), (4) a flag-gated AI assistant (Parent Connect), and (5) AI Config.
 
 ---
 
@@ -12,7 +12,7 @@ Three engineering teams are shipping simultaneously:
 
 | Team | Service | SDK | Assignment Coverage |
 |------|---------|-----|---------------------|
-| Clinical AI team | `python-service` | Python + LD AI SDK | Part 1: Release & Remediate + Extra: AI Config |
+| Clinical AI team | `python-service` | Python + LD AI SDK | Parts 1, 4, 5: Release & Remediate, Parent Connect, AI Config |
 | Patient Access team | `go-service` | Go | Part 2: Targeting |
 | Patient Safety team | `java-service` | Java (Spring Boot) | Part 3: Config-driven clinical alert |
 
@@ -157,7 +157,7 @@ Controls who sees the new Maternity Care Pathway module. Used in Part 2.
 
 #### Flag 3: `helix-clinical-ai` (AI Config)
 
-Controls the model and system prompt for three clinical AI personas. Used for AI Config.
+Controls the model and system prompt for three clinical AI personas. Used in Part 5 (AI Config — the ED/OB scribes) and Part 4 (Parent Connect — the HELIX-PARENT persona).
 
 1. **Agents → Configs → Create config**
 2. Name: `Helix Clinical AI`  |  Key: `helix-clinical-ai`
@@ -220,7 +220,7 @@ Controls the blood-pressure threshold the Java service uses to raise an alert. U
 
 #### Flag 5: `helix-parent-connect` (Boolean)
 
-Feature gate for the Parent Connect AI assistant. This flag turns the whole feature on or off; the `helix-clinical-ai` AI Config (Flag 3) separately controls its model and prompt. Used in the AI Config section.
+Feature gate for the Parent Connect AI assistant. This flag turns the whole feature on or off; the `helix-clinical-ai` AI Config (Flag 3) separately controls its model and prompt. Used in Part 4 (Parent Connect).
 
 1. **Features → Flags → Create flag**
 2. Name: `Helix Parent Connect`  |  Key: `helix-parent-connect`  |  Type: **Boolean**
@@ -300,11 +300,13 @@ python -m http.server 3000
 Open **http://localhost:3000** in Chrome.
 
 > The Python service must be running for the SSE listener to work.  
-> Go and Java are needed for the Part 2 (targeting) and Part 3 (evaluate) demo tabs.
+> Go and Java are needed for the Part 2 (targeting) and Part 3 (alerts) demo tabs.
 
 ---
 
 ## Demo Walkthrough
+
+> Each part's page shows a **live status badge** for its feature flag (Parts 1–4), pushed over SSE the instant you toggle the flag in LaunchDarkly. Part 5 (AI Config) has no flag badge — it's an AI Config, not a feature flag.
 
 ### Part 1: Release & Remediate
 
@@ -340,7 +342,7 @@ The story: *Helix is rolling out a new Maternity Care Pathway module. Maternity 
 
 > The Go service returns `enabled` + `reason` via `BoolVariationDetail`; the UI renders the Pathway module when `enabled` is `true`, the standard chart when `false`.
 
-### Part 3: Configuration as a Flag (Java)
+### Part 3: Alerts — Configuration as a Flag (Java)
 
 Flags aren't only on/off switches — they can carry a value your code reads at runtime. A developer built a blood-pressure alert; the **threshold** it fires at is a LaunchDarkly **Number** flag (`helix-bp-alert-threshold`, default 140 mmHg) that the clinical team owns. The Java service reads it via `GET /lab-check?value=…`.
 
@@ -351,15 +353,23 @@ Flags aren't only on/off switches — they can carry a value your code reads at 
 
 > The Java service uses `intVariation` with a default of 140, so Part 3 runs even before you create the flag; creating `helix-bp-alert-threshold` (Flag 4 above) is what lets you change the threshold live. This shows flags carrying **configuration**, not just toggles.
 
-### AI Config
+### Part 4: Parent Connect
 
-1. Open the **AI Config** tab
-2. Select **ED** department: Haiku model, ED coding prompt
-3. Select **OB** department: Sonnet model, OB coding prompt
-4. Open the **Parent Connect** tab and send one of the sample messages
-5. Claude responds through the HELIX-PARENT variation
-6. Update the system prompt in LD and generate again. The next call picks it up with no code change.
-7. **Disable the feature (flag):** toggle **`helix-parent-connect`** off in LD and send a Parent Connect message → it falls back to the 24/7 nurse line. Toggle it back **on** to restore the AI. (Step 6 edits the prompt via the AI Config; this on/off is a separate boolean flag — two independent controls over one feature.)
+The "my baby at 2am" assistant — the part that shows two LaunchDarkly controls over one feature: a boolean flag (`helix-parent-connect`) gates it on/off, while the `helix-clinical-ai` AI Config owns its model and prompt.
+
+1. Open the **Part 4: Parent Connect** tab
+2. Send a sample message (e.g. **Fever**) → a warm, evidence-based reply from the **HELIX-PARENT** variation (Claude Sonnet); a message that sounds like an emergency raises a 🚨 escalation banner
+3. **Edit the prompt (AI Config):** change the HELIX-PARENT variation's instructions in `helix-clinical-ai`, save, and send again — new guidance, no deploy
+4. **Disable the feature (flag):** toggle **`helix-parent-connect`** off in LD and send a message → it falls back to the 24/7 nurse line; toggle it back **on** to restore the AI. (Step 3 edits the prompt via the AI Config; this is a separate boolean flag — two independent controls over one feature.)
+
+### Part 5: AI Config
+
+The same `helix-clinical-ai` AI Config drives the clinical scribe personas. The `department` context attribute routes each request to the right model + prompt — adding a persona or swapping a model is a dashboard change, not a code change.
+
+1. Open the **Part 5: AI Config** tab
+2. Select **ED** → served by HELIX-SCRIBE-ED (Claude Haiku) with the ED coding prompt
+3. Select **OB** → served by HELIX-SCRIBE-OB (Claude Sonnet) with the OB coding prompt
+4. Generate codes, then change a variation's model or instructions in LD and generate again — the next call uses the new config instantly, with no deploy
 
 ---
 
@@ -376,7 +386,7 @@ LD_Helix_Demo/
 │   └── check_prerequisites.py  # verifies toolchain, .env, pip deps, ports
 │
 ├── python-service/
-│   ├── main.py           # FastAPI: SSE stream, AI Config, Parent Connect
+│   ├── main.py           # FastAPI: per-flag SSE stream, AI Config, Parent Connect
 │   └── requirements.txt
 │
 ├── go-service/
@@ -401,13 +411,16 @@ LD_Helix_Demo/
 
 ## Flag Reference
 
-| Flag Key | Type | SDK(s) | Demo Tab |
-|----------|------|--------|----------|
-| `helix-auto-scribe` | Boolean | Python | Part 1 Release |
-| `helix-maternity-pathway` | Boolean + Targeting | Go, Java | Part 2 Target |
-| `helix-clinical-ai` | AI Config | Python + LD AI SDK | AI Config, Parent Connect |
-| `helix-bp-alert-threshold` | Number | Java | Part 3 Alerts |
-| `helix-parent-connect` | Boolean | Python | AI Config (Parent Connect) |
+Four feature flags (one per part, Parts 1–4):
+
+| Flag Key | Type | SDK(s) | Used in |
+|----------|------|--------|---------|
+| `helix-auto-scribe` | Boolean | Python | Part 1: Release |
+| `helix-maternity-pathway` | Boolean + Targeting | Go | Part 2: Target |
+| `helix-bp-alert-threshold` | Number | Java | Part 3: Alerts |
+| `helix-parent-connect` | Boolean | Python | Part 4: Parent Connect |
+
+Plus one **AI Config** (not a feature flag): **`helix-clinical-ai`** (Python + LD AI SDK) — controls the model and system prompt for the clinical AI personas used in Part 4 (Parent Connect, the HELIX-PARENT persona) and Part 5 (AI Config, the ED/OB scribes).
 
 ---
 
@@ -423,7 +436,7 @@ Run `go mod tidy` first to download dependencies.
 Check that Java 17+ and Maven 3.6+ are installed, and that `LD_SERVER_SDK_KEY` is set in `.env`.
 
 **AI returns an error**  
-Verify `ANTHROPIC_API_KEY` in `.env` is valid and the `helix-clinical-ai` AI Config is enabled in LD.
+Verify `ANTHROPIC_API_KEY` in `.env` is valid and the `helix-clinical-ai` AI Config is enabled in LD. For Parent Connect, also confirm the `helix-parent-connect` flag is **on** — when it's off, the nurse-line fallback is expected behaviour.
 
 **Flag changes don't appear in the browser**  
-Check the Python service logs. If no `[LD FLAG CHANGE]` lines appear, verify `LD_SERVER_SDK_KEY` is the server-side key (starts with `sdk-`), not the client-side ID.
+The per-part badges update over SSE from the Python service. Confirm it's running (no "SSE disconnected" banner in the UI) and that `LD_SERVER_SDK_KEY` is the server-side key (starts with `sdk-`), not the client-side ID.

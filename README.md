@@ -220,6 +220,21 @@ Controls the blood-pressure threshold the Java service uses to raise an alert. U
 
 ## Running the Services
 
+### Quick start (recommended)
+
+From the project root, in one terminal (bash / git-bash on Windows):
+
+```bash
+./run.sh     # checks prerequisites, then starts any service that isn't already up
+./stop.sh    # stops all four services
+```
+
+`run.sh` writes each service's output to `logs/<name>.log` and prints an UP/DOWN
+table when it's done. To watch a service's output live instead, start them by hand
+with the four terminals below.
+
+### Manual (four terminals)
+
 You'll need four terminals open from the project root.
 
 ### Terminal 1: Python service (port 8000)

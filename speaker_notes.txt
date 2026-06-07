@@ -1,0 +1,159 @@
+HELIX HEALTH GROUP - LAUNCHDARKLY SE DEMO  |  SPEAKER NOTES
+Extracted from presentation/index.html. This is your scratchpad - edit freely.
+Slide numbers match deck order. When you're done, I can fold your versions back in.
+31 slides total.
+
+========================================================================
+SLIDE 1  |  Helix Health Group
+========================================================================
+Presenting Helix Health Group, a medical group that runs forty-seven hospitals and is building the software that holds its whole network together. Over the next few minutes I'll show you how they use LaunchDarkly to ship software quickly without ever putting a patient or a provider at risk. Everything you'll see is running live against a real LaunchDarkly environment, so when I toggle a flag it is genuinely changing in the dashboard right in front of your eyes! If you'd like to read along, you can press S for these speaker notes or F for fullscreen.
+
+========================================================================
+SLIDE 2  |  Meet Helix Health Group
+========================================================================
+Who is Helix? Picture forty-seven hospitals across twelve states, six thousand providers, and more than forty thousand patient encounters every single day, everything from a Level I Trauma centers to dedicated Pediatric centers. Three different engineering teams build on this one platform at the same time, and each of them lives with a very different kind of risk. The Clinical AI team is shipping automated billing, where a single wrong ICD-10 code means a denied claim. The Patient Access team is rolling out a new maternity care pathway that forty thousand encounters a day will touch. And the patient safety team owns clinical alert thresholds that have to change as guidelines evolve, without a deployment every single time. What they all need is the freedom to release and adjust on their own schedule, without waiting on or breaking each other.
+
+========================================================================
+SLIDE 3  |  ~ "Executive leadership is pressuring teams to turn out f...
+========================================================================
+Here's the tension every one of these teams feels. Leadership wants features out the door faster, but remember, these are hospitals, and lives are genuinely on the line, so quality simply cannot slip. In the old world, deploying code and releasing a feature were the same single act, which means a bug in production turns into a frantic hotfix, a rollback pull request, and an outage window, and at forty thousand encounters a day every minute of that is enormously expensive. LaunchDarkly's whole premise is to break the link between deploying and releasing, and that is what the rest of this story is really about.
+
+========================================================================
+SLIDE 4  |  Separate Deployment from Release
+========================================================================
+The idea is simple to say and surprisingly powerful in practice: separate deployment from release. Deploying code becomes a quiet technical event, because the feature ships to production wrapped in a flag that's switched off, so nobody sees it yet. Releasing then becomes a business decision you make later, on your own terms: turn it on for your internal testers, then one department, then every hospital, all from the dashboard. And if something goes wrong, rolling back is just flipping that same switch off, so the old experience is back in under a second, with no hotfix and no outage window.
+
+========================================================================
+SLIDE 5  |  Architecture Overview
+========================================================================
+Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project: a Python service that owns Part 1 and the AI Config work and streams flag changes out to the browser, a Go service that handles the Part 2 targeting, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags drive all of them, identically.
+
+========================================================================
+SLIDE 6  |  Part 1  |  Release & Remediate
+========================================================================
+Let's start with the Clinical AI team and their highest-stakes feature. They want to ship an AI auto-scribe that turns a doctor's encounter notes into billing codes automatically. It's enormously useful, but it touches claims revenue directly, so it's exactly the kind of feature you want to release carefully and be able to pull back the instant anything looks wrong. The flag is called helix-auto-scribe, it's a simple on-off boolean, and it's evaluated by the Python service.
+
+========================================================================
+SLIDE 7  |  Part 1: Release  |  helix-auto-scribe
+========================================================================
+Here's the before and after. Today a provider spends twenty-plus minutes per encounter picking ICD-10 and CPT codes by hand, and every mistake becomes a denied claim. With auto-scribe, the transcript goes in and the model returns the codes in seconds, with the provider reviewing them instead of coding from scratch. The part that matters most for our story is on the right: the entire feature is wrapped in a single flag check. The code is already deployed to production right now; it's just that the flag is off, so every provider still sees the old manual form. Nobody even knows the new feature is there yet.
+
+========================================================================
+SLIDE 8  |  Part 1: Release  |  Instant Flag Updates: No Page Reload
+========================================================================
+Now, how does the feature appear the very moment we flip the flag, without anyone refreshing their browser? On the server side, the LaunchDarkly SDK holds a streaming connection open to LaunchDarkly and fires a callback within milliseconds of any change. We catch that callback and push it straight out to the browser over Server-Sent Events. The browser is already listening on that stream, so when the value flips, the panel simply appears or disappears on its own. No polling, no reload, under a second from end to end.
+
+========================================================================
+SLIDE 9  |  Part 1: DEMO  |  Releasing helix-auto-scribe
+========================================================================
+Let's actually do it. Right now the badge in the corner reads OFF. I'll go into LaunchDarkly, find helix-auto-scribe, and toggle it on, and watch, the panel appears here on its own with no refresh. From there I'll leave it on the Emergency Department, where a sample encounter is already filled in, and click Generate Billing Codes; the model returns the diagnosis, the ICD-10 and CPT codes, and a short rationale in a couple of seconds. If you want, I can switch the department to Obstetrics and load that sample to preview the AI Config piece we'll get to shortly. And just like that, all six thousand providers can use AI-assisted coding, with no deployment, no restart, and nothing pushed.
+
+========================================================================
+SLIDE 10  |  Part 1: Remediate  |  Something Went Wrong
+========================================================================
+But this is healthcare, so let's talk about what happens when it goes wrong. Imagine compliance discovers the AI is over-coding, billing routine visits as high-complexity, and every extra minute it stays live is a growing liability. In the old world this is a fire drill. Here I have two easy options. I can flip the flag off in the dashboard in about ten seconds, or I can do it from a script, one REST call from curl, from Postman, or even straight from a monitoring tool like Datadog or PagerDuty, so the rollback happens automatically the instant an alert fires. Either way the feature is gone in seconds, providers are back on the safe manual workflow, and there was no hotfix, no rollback pull request, and no outage window.
+
+========================================================================
+SLIDE 11  |  Now let's see the demo for Part 1!
+========================================================================
+Let's switch to the live app and run Part 1. I'll release helix-auto-scribe by toggling it on and watch the panel swap with no refresh, then remediate by flipping it back off, all live and with no deploy.
+
+========================================================================
+SLIDE 12  |  Part 2  |  Target
+========================================================================
+Part 1 was about whether a feature is on. Part 2 is about who gets to see it. So let's switch over to the Patient Access team, who are rolling out a brand-new Maternity Care Pathway. They don't want to flip it on for all forty thousand encounters at once; they want the right clinicians to get it first. The flag is helix-maternity-pathway, and this time it's evaluated by the Go service.
+
+========================================================================
+SLIDE 13  |  Part 2: Target  |  The Maternity Care Pathway
+========================================================================
+Here's what we're actually rolling out, because the fair question is always "okay, but what does the user get?" For maternity staff, the patient chart becomes a real Maternity Care Pathway module: a guided labor-and-delivery workflow with a stage tracker, the care plan and history, and the right order sets. For everyone else, the exact same application shows the plain standard chart they already use, with a small note that the pathway isn't enabled for them. Same code, two completely different experiences, and LaunchDarkly is the thing deciding which one each clinician sees. The best part is you'll watch that chart actually change, live, in the demo.
+
+========================================================================
+SLIDE 14  |  Part 2: Target  |  One Rule Decides Who's In
+========================================================================
+And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls through to off. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
+
+========================================================================
+SLIDE 15  |  Part 2: Target  |  How the Go SDK Evaluates It
+========================================================================
+Under the hood it's the same one-flag pattern as Part 1, just written in Go this time. We build a context describing the clinician, really just their department, and ask LaunchDarkly to evaluate the flag for them. If it comes back true we render the pathway, otherwise the standard chart. One detail I love: the SDK doesn't only tell us the answer, it tells us the reason, RULE_MATCH or FALLTHROUGH, which we surface in the demo so you can always answer the question "why did this person see this?". And notice the default is false, so if LaunchDarkly were ever unreachable, every clinician safely falls back to the standard chart.
+
+========================================================================
+SLIDE 16  |  Part 2: DEMO  |  Same App, Different Clinician
+========================================================================
+Let's see it. I'll click Dr. Alvarez, a maternity attending, and the pathway module renders. Then Grace Liu, a maternity charge nurse, and it's the same pathway, because it's the department that matters, not the person or the exact role. Then Dr. Reed over in the Emergency department, and he drops back to the standard chart, because no rule matched him. If you want the proof, I'll expand the evaluation detail and you'll see the real SDK reason for each one. And if I decided Dr. Reed should be included, I'd just edit that one rule in the dashboard and click him again, with no redeploy.
+
+========================================================================
+SLIDE 17  |  Now let's see the demo for Part 2!
+========================================================================
+Now to the live app for Part 2. I'll click through the clinician personas and watch the patient chart change per user: the maternity staff see the pathway, the ER doctor sees the standard chart, all from one targeting rule.
+
+========================================================================
+SLIDE 18  |  Part 3  |  Alerts
+========================================================================
+Part 3 belongs to the patient safety team. A developer built a blood-pressure alert, but the threshold it fires at isn't baked into the code; it's a LaunchDarkly Number flag the clinical team owns, so they can re-tune it as guidelines change with no deployment.
+
+========================================================================
+SLIDE 19  |  Part 3: Java SDK  |  Configuration, Not Just On/Off
+========================================================================
+There's one more shape a flag can take that people often miss: it doesn't have to be a simple on or off. For Part 3, a developer built a blood-pressure alert, the kind of thing that screens for preeclampsia, but the threshold it fires at isn't baked into the code. It's a LaunchDarkly Number flag that the clinical team owns. Watch: I enter a reading of 135, and against the default threshold of 140 it comes back normal. Now I lower that threshold in the dashboard to 130, check the very same 135 again, and it flips to an alert, with no deploy and no restart; the Java service simply read the new number. The takeaway is that flags aren't only switches. A number, a string, or even a JSON blob can let the people closest to the problem tune real behaviour safely, without an engineering ticket every single time.
+
+========================================================================
+SLIDE 20  |  Now let's see the demo for Part 3!
+========================================================================
+Now to the live app for Part 3. I'll enter a blood-pressure reading, then lower the helix-bp-alert-threshold number flag in the dashboard and watch the very same reading flip from normal to an alert, with no redeploy.
+
+========================================================================
+SLIDE 21  |  Part 4  |  Parent Connect
+========================================================================
+Part 4 is the most human part of the demo: a 24/7 AI assistant for new parents. It shows two LaunchDarkly controls working together, a boolean flag that gates the whole feature, and the AI Config that owns the model and the prompt.
+
+========================================================================
+SLIDE 22  |  Part 4: Parent Connect  |  "My Baby at 2am"
+========================================================================
+Let me make that concrete with my favourite example. It's three in the morning, a first-time parent's three-week-old has a fever and won't stop crying, and they honestly don't know whether to rush to the ER or wait until morning. Parent Connect, running that warm persona, gives them calm, evidence-based guidance and tells them clearly when it's time to call 911. If the response sounds like an emergency, we flag it and put the nurse line front and centre. And notice there are two independent LaunchDarkly controls here: the AI Config owns the model and the prompt, so the clinical team can reword the guidance live, while a separate boolean flag, helix-parent-connect, simply gates the whole feature, so flipping it off instantly falls back to the 24/7 nurse line and a frightened parent is never left with nothing.
+
+========================================================================
+SLIDE 23  |  Now let's see the demo for Part 4!
+========================================================================
+Live app for Part 4. I'll send a Parent Connect message and get the warm AI guidance, then toggle the helix-parent-connect flag off and send again, watching it fall back to the 24/7 nurse line.
+
+========================================================================
+SLIDE 24  |  Part 5  |  AI Config
+========================================================================
+Finally, Part 5: how do you manage AI responsibly? Helix runs three different clinical AI personas, and today every prompt tweak or model change is a code change and a deployment. LaunchDarkly's AI Config is built for exactly this; the helix-clinical-ai config controls the model and the prompt from the dashboard.
+
+========================================================================
+SLIDE 25  |  Part 5: The Problem  |  AI Prompts Shouldn't Live in Code
+========================================================================
+Think about what it means to have your AI prompts living in code. The system prompt is just a string constant sitting in main.py. Want to improve it after an accuracy review? That's a pull request, a code review, and a deploy. Want to upgrade the model, or A/B test two prompts, or run three different personas? That's more branches and more code paths to maintain. With AI Config, the model and the prompt move out of the code and into the LaunchDarkly dashboard, so you change them there and the very next API call uses the new version, with no deploy and no waiting on engineering.
+
+========================================================================
+SLIDE 26  |  Part 5: Three Variations  |  Three Clinical AI Personas
+========================================================================
+Here are the three personas, and they show why this is more than a convenience. The ED scribe runs on Claude Haiku, because it's fast and inexpensive, which is what you want for straightforward emergency coding. The OB scribe runs on Sonnet, because obstetric coding needs more depth and care. And Parent Connect runs on Sonnet too, but with a completely different, warm, patient-facing prompt. The same department attribute we've used all along routes each request to the right one, and adding a fourth persona or swapping any model is a dashboard change, not a code change.
+
+========================================================================
+SLIDE 27  |  Part 5: Integration  |  One Code Path. Many Configurations.
+========================================================================
+The code behind all of that is almost anticlimactic, which is exactly the point. You make one call to fetch the AI config, and LaunchDarkly hands back the right model and the right prompt for this context. You pass them to the model, then report token usage and success back to LaunchDarkly so you can see cost and reliability per variation. The application code itself never changes; the model and the prompt are controlled entirely from the dashboard.
+
+========================================================================
+SLIDE 28  |  Now let's see the demo for Part 5!
+========================================================================
+Finally, the live app for Part 5. I'll generate billing codes, then change a model or a prompt in the helix-clinical-ai AI Config and run it again; the next call picks up the new configuration instantly, with no deploy.
+
+========================================================================
+SLIDE 29  |  What Helix Unlocked
+========================================================================
+So let's step back and look at everything Helix walked away with. They can deploy any time and release only when they're confident. They can roll back in seconds — a toggle or a single API call, and every user is back on the old experience instantly. They can control who sees sensitive information right down to the department, and change that from the dashboard. They can let the clinical team tune real behaviour, like an alert threshold, without an engineering ticket. And they can iterate on their AI, both the models and the prompts, at dashboard speed. Each of those is valuable on its own; together they change how this entire organization ships software, in an environment where the stakes are about as high as they get.
+
+========================================================================
+SLIDE 30  |  Why LaunchDarkly for Healthcare
+========================================================================
+Healthcare: highest stakes, can't be slow, can't sacrifice quality. LD solves both simultaneously. Every health system right now is asking how to deploy AI responsibly. AI Config is a direct answer.
+
+========================================================================
+SLIDE 31  |  Questions?
+========================================================================
+And that's the story: one medical group, three engineering teams, and LaunchDarkly tying it all together, from releasing a feature, to controlling who can see it, to tuning real behaviour, to managing AI, all without redeploying. Everything you saw is in the public repo; the README walks through setup, and the integration guide shows how you'd add LaunchDarkly to an app from scratch. I'd love to dig into any part of it, so what would you like to see again?

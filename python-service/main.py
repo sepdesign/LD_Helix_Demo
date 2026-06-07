@@ -81,38 +81,57 @@ app.add_middleware(
 # immediately, no polling, no page reload required.
 # ---------------------------------------------------------------------------
 _sse_queues: list[asyncio.Queue] = []
-_flag_state: dict = {"helix-auto-scribe": False}
 
 # Handle to the uvicorn/asyncio event loop, captured when the first SSE client
-# connects.  The LD SDK fires _on_flag_change() on its own background thread,
+# connects.  The LD SDK fires the change listeners on its own background thread,
 # which has no event loop of its own, so it needs this reference to hand work
 # back to the main loop via call_soon_threadsafe.
 _main_loop: "asyncio.AbstractEventLoop | None" = None
 
-# A generic "system" context used only to register the flag listener.
+# A generic "system" context used only to register flag listeners.
 # Real per-user evaluation happens in the targeting endpoints.
 _SYSTEM_CTX = Context.builder("helix-system").build()
+# A maternity-staff context so the Part 2 badge reflects whether maternity
+# clinicians currently see the pathway (helix-maternity-pathway is a targeting flag).
+_MATERNITY_CTX = Context.builder("helix-maternity-staff").set("department", "maternity").build()
 
 
-def _on_flag_change(event) -> None:
-    """Callback fired by the LD SDK when helix-auto-scribe changes."""
-    new_value = event.new_value
-    _flag_state["helix-auto-scribe"] = new_value
-    payload = json.dumps({"flag": "helix-auto-scribe", "value": new_value})
-    # This runs on the LD SDK's background thread.  Push the event onto each
-    # client queue through the main loop captured in sse_events().  If no client
-    # has connected yet there is nothing to push (and no loop to push with).
+# Each entry: (flag key, evaluation context, default, value -> display transform).
+# The display value is what that part's status badge shows in the UI; it is
+# streamed over SSE so every part page reflects its own flag live.
+_WATCHED_FLAGS = [
+    ("helix-auto-scribe",        _SYSTEM_CTX,    False, lambda v: bool(v)),
+    ("helix-maternity-pathway",  _MATERNITY_CTX, False, lambda v: bool(v)),
+    ("helix-bp-alert-threshold", _SYSTEM_CTX,    140,   lambda v: int(v) if isinstance(v, (int, float)) else 140),
+    ("helix-parent-connect",     _SYSTEM_CTX,    True,  lambda v: bool(v)),
+]
+
+# Current display value of each watched flag, kept live by the listeners below.
+_flag_state: dict = {}
+
+
+def _push_flag(flag_key: str, value) -> None:
+    """Record a flag's display value and push it to every connected SSE client."""
+    _flag_state[flag_key] = value
+    payload = json.dumps({"flag": flag_key, "value": value})
+    # Runs on the LD SDK's background thread; hand work to the main loop.
     if _main_loop is None:
         return
     for q in _sse_queues:
         _main_loop.call_soon_threadsafe(q.put_nowait, payload)
 
 
-ld.flag_tracker.add_flag_value_change_listener(
-    "helix-auto-scribe",   # flag key: create this boolean flag in LD first
-    _SYSTEM_CTX,
-    _on_flag_change,
-)
+def _make_listener(flag_key: str, transform):
+    """Build an LD change listener that streams the flag's display value."""
+    def _listener(event) -> None:
+        _push_flag(flag_key, transform(event.new_value))
+    return _listener
+
+
+for _fk, _ctx, _default, _transform in _WATCHED_FLAGS:
+    # Seed the initial display value, then register a live change listener.
+    _flag_state[_fk] = _transform(ld.variation(_fk, _ctx, _default))
+    ld.flag_tracker.add_flag_value_change_listener(_fk, _ctx, _make_listener(_fk, _transform))
 
 
 # ---------------------------------------------------------------------------
@@ -131,9 +150,9 @@ async def sse_events():
     _sse_queues.append(queue)
 
     async def generate() -> AsyncGenerator[str, None]:
-        # Send current flag state immediately so the UI is in sync on connect
-        current = ld.variation("helix-auto-scribe", _SYSTEM_CTX, False)
-        yield f"data: {json.dumps({'flag': 'helix-auto-scribe', 'value': current})}\n\n"
+        # Send every watched flag's current state so each part page is in sync on connect.
+        for _fk, _value in list(_flag_state.items()):
+            yield f"data: {json.dumps({'flag': _fk, 'value': _value})}\n\n"
 
         try:
             while True:
@@ -260,8 +279,9 @@ async def code_encounter(request: Request):
 # with a "maternity-parent" department context, which routes to the warm,
 # empathetic Parent Connect variation (Claude Sonnet).
 #
-# If the flag is OFF (e.g. after a trigger fires), falls back gracefully
-# to directing the parent to the 24/7 nurse line.
+# Two layers can disable the AI: the helix-parent-connect boolean flag (the
+# feature gate) and the helix-clinical-ai AI Config's own enable toggle. If
+# either is off, the parent is routed to the 24/7 nurse line.
 # ---------------------------------------------------------------------------
 @app.post("/parent-connect")
 async def parent_connect(request: Request):
@@ -280,6 +300,21 @@ async def parent_connect(request: Request):
         .set("patient_type", "postpartum")
         .build()
     )
+
+    # Feature gate (boolean flag). The Patient Experience team can flip
+    # helix-parent-connect OFF in LaunchDarkly to instantly route every parent to
+    # the 24/7 nurse line -- independently of the helix-clinical-ai AI Config that
+    # controls the model and prompt. Default True so the feature works before the
+    # flag exists; if LD is unreachable the AI Config call below also fails safe.
+    if not ld.variation("helix-parent-connect", context, True):
+        return {
+            "response": (
+                "Our AI care assistant is turned off right now. "
+                "Please call our 24/7 nurse line at 1-800-HELIX-RN for immediate guidance."
+            ),
+            "escalate": False,
+            "model_used": None,
+        }
 
     ai_config, tracker = ai_client.config("helix-clinical-ai", context, AIConfig(enabled=False))
 

@@ -44,18 +44,20 @@
     header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: .02em; }
     header span { font-size: .8rem; opacity: .75; }
 
-    /* LD flag status pill in header */
-    #flag-badge {
-      display: inline-flex; align-items: center; gap: .4rem;
-      background: rgba(255,255,255,.15); border-radius: 999px;
-      padding: .25rem .75rem; font-size: .78rem; font-weight: 600;
+    /* Per-part LD flag status pill (shown at the top of each part panel) */
+    .flag-status {
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: #1e293b; border: 1px solid #334155; border-radius: 999px;
+      padding: .3rem .85rem; font-size: .8rem; font-weight: 600; color: #e2e8f0;
+      margin-bottom: .9rem;
     }
-    #flag-badge .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #aaa; transition: background .4s;
+    .flag-status .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #94a3b8; transition: background .4s;
     }
-    #flag-badge.on  .dot { background: var(--ok); }
-    #flag-badge.off .dot { background: var(--danger); }
+    .flag-status.on  .dot { background: var(--ok); }
+    .flag-status.off .dot { background: var(--danger); }
+    .flag-status.num .dot { background: #38bdf8; }
 
     /* ------------------------------------------------------------------ */
     /* Layout                                                               */
@@ -332,10 +334,6 @@
   <h1>⚕ Helix Health Group: Clinical Platform</h1>
   <div style="display:flex;align-items:center;gap:1rem">
     <span>LaunchDarkly SE Demo</span>
-    <div id="flag-badge" class="off">
-      <span class="dot"></span>
-      <span id="flag-label">Auto-Scribe: OFF</span>
-    </div>
   </div>
 </header>
 
@@ -348,8 +346,8 @@
     <button class="active" onclick="showPanel('p1', this)">📋 Part 1: Release</button>
     <button onclick="showPanel('p2', this)">🎯 Part 2: Target</button>
     <button onclick="showPanel('p2j', this)">🩺 Part 3: Alerts</button>
-    <button onclick="showPanel('ai', this)">🤖 AI Config</button>
-    <button onclick="showPanel('parent', this)">👶 Parent Connect</button>
+    <button onclick="showPanel('parent', this)">👶 Part 4: Parent Connect</button>
+    <button onclick="showPanel('ai', this)">🤖 Part 5: AI Config</button>
   </nav>
 
   <!-- ------------------------------------------------------------------ */
@@ -361,6 +359,7 @@
     <!-- PANEL 1, Part 1: Release & Remediate                            -->
     <!-- ================================================================ -->
     <div id="p1" class="panel active">
+      <div class="flag-status off" id="fs-autoscribe"><span class="dot"></span><span class="lbl">Auto-Scribe: OFF</span></div>
       <details class="driver" open>
         <summary>🎬 Demo driver — flip the switch (Part 1)</summary>
         <ol>
@@ -381,7 +380,7 @@
           <div>
             <span class="badge badge-part">Part 1</span>
             <span class="badge badge-sdk" style="margin-left:.4rem">Python SDK</span>
-            <h2 style="margin-top:.5rem">Release & Remediate: AI Auto-Scribe</h2>
+            <h2 style="margin-top:.5rem">Part 1: Release & Remediate</h2>
             <p>
               The <strong>helix-auto-scribe</strong> flag controls the AI clinical
               transcription and billing-code feature. Toggle it in the LaunchDarkly
@@ -564,6 +563,7 @@
     <!-- PANEL 2, Part 2: Targeting (Go service)                         -->
     <!-- ================================================================ -->
     <div id="p2" class="panel">
+      <div class="flag-status off" id="fs-maternity"><span class="dot"></span><span class="lbl">Maternity Pathway: OFF</span></div>
       <details class="driver" open>
         <summary>🎬 Demo driver — targeting (Part 2)</summary>
         <ol>
@@ -579,7 +579,7 @@
       <div class="card">
         <span class="badge badge-part">Part 2</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Go SDK</span>
-        <h2 style="margin-top:.5rem">Targeting: Who Can See the Maternity Care Pathway</h2>
+        <h2 style="margin-top:.5rem">Part 2: Targeting the Maternity Care Pathway</h2>
         <p>
           The <strong>helix-maternity-pathway</strong> flag controls <em>who can see</em> a
           patient's Maternity Care Pathway — the care plan, the stage tracker, and the order
@@ -640,6 +640,7 @@
     <!-- PANEL 2J, Part 3: Config-driven alert (Java service)            -->
     <!-- ================================================================ -->
     <div id="p2j" class="panel">
+      <div class="flag-status num" id="fs-bp"><span class="dot"></span><span class="lbl">BP Threshold: 140 mmHg</span></div>
       <details class="driver" open>
         <summary>🎬 Demo driver — Part 3 (Java SDK)</summary>
         <ol>
@@ -654,7 +655,7 @@
       <div class="card">
         <span class="badge badge-part">Part 3</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Java SDK</span>
-        <h2 style="margin-top:.5rem">Configuration, Not Just On/Off</h2>
+        <h2 style="margin-top:.5rem">Part 3: Configuration, Not Just On/Off</h2>
         <p>
           Flags aren't only switches — they can carry a <em>value</em> your code reads at
           runtime. A developer built this blood-pressure alert; the clinical team owns the
@@ -691,7 +692,7 @@
       <div class="card">
         <span class="badge badge-part">Extra Credit</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
-        <h2 style="margin-top:.5rem">AI Config: helix-clinical-ai</h2>
+        <h2 style="margin-top:.5rem">Part 5: AI Config</h2>
         <p>
           Three AI personas, one flag, zero code changes.  The <strong>helix-clinical-ai</strong>
           AI Config in LaunchDarkly controls which Claude model and system prompt are
@@ -755,13 +756,14 @@
     <!-- PANEL PARENT, Parent Connect                                     -->
     <!-- ================================================================ -->
     <div id="parent" class="panel">
+      <div class="flag-status on" id="fs-parent"><span class="dot"></span><span class="lbl">Parent Connect: ON</span></div>
       <details class="driver" open>
         <summary>🎬 Demo driver — Parent Connect</summary>
         <ol>
           <li><strong>Normal guidance:</strong> click <strong>Sample: Fever</strong>, then <strong>Send</strong> → warm reply from the HELIX-PARENT variation (Sonnet).</li>
           <li><strong>Escalation:</strong> click <strong>Sample: Breathing</strong>, then <strong>Send</strong> → the red 🚨 emergency banner appears (escalation heuristic on the response).</li>
           <li><strong>Live prompt update:</strong> edit the HELIX-PARENT variation in <span class="ld-path">AI Configs → helix-clinical-ai</span>, <strong>Save</strong>, and send again — new guidance, no deploy.</li>
-          <li><strong>Graceful fallback:</strong> disable <span class="ld-path">helix-clinical-ai</span> in LD and send a message → the UI falls back to the 24/7 nurse-line message.</li>
+          <li><strong>Graceful fallback (feature flag):</strong> toggle <span class="ld-path">helix-parent-connect</span> <strong>off</strong> in LD, then send a message → the UI falls back to the 24/7 nurse-line message. Toggle it back on to restore the AI. (Prompt editing in step 3 is the AI Config; this on/off is a plain boolean flag.)</li>
           <li><strong>Hit the SDK directly (optional):</strong>
             <div class="cmd"><code>curl -X POST http://localhost:8000/parent-connect -H "Content-Type: application/json" -d '{"message":"my 3-week-old has had a fever of 100.8 for 2 hours","userId":"parent-demo"}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
@@ -770,7 +772,7 @@
       <div class="card">
         <span class="badge badge-part">Extra Credit: AgentControl</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
-        <h2 style="margin-top:.5rem">👶 Helix Parent Connect</h2>
+        <h2 style="margin-top:.5rem">Part 4: Parent Connect</h2>
         <p>
           24/7 AI-powered guidance for new parents: the "my baby at 2am" feature.
           Uses the <strong>HELIX-PARENT</strong> variation of <code>helix-clinical-ai</code>:
@@ -779,8 +781,11 @@
           prompt in LaunchDarkly: no engineering ticket, no deployment, active in seconds.
         </p>
         <p>
-          If <code>helix-clinical-ai</code> is disabled, the UI gracefully falls back to
-          directing parents to the 24/7 nurse line.
+          Two LaunchDarkly controls, one feature: the <code>helix-parent-connect</code>
+          boolean flag <strong>gates the feature</strong> (turn it off and the UI gracefully
+          falls back to the 24/7 nurse line), while the <code>helix-clinical-ai</code> AI
+          Config <strong>controls the model and prompt</strong>. Editing the prompt and
+          disabling the feature are independent.
         </p>
       </div>
 
@@ -870,14 +875,35 @@
   // The browser connects once to /events.  When helix-auto-scribe is toggled
   // in LaunchDarkly the server pushes an event here, no polling, no reload.
   // -----------------------------------------------------------------------
-  const badge  = document.getElementById('flag-badge');
-  const label  = document.getElementById('flag-label');
   const scribe = document.getElementById('scribe-panel');   // the AI "after" panel
   const manual = document.getElementById('manual-panel');   // the manual "before" panel
 
+  // Each LaunchDarkly flag maps to a live status badge at the top of its part panel.
+  const FLAG_BADGES = {
+    'helix-auto-scribe':        { el: 'fs-autoscribe', label: 'Auto-Scribe' },
+    'helix-maternity-pathway':  { el: 'fs-maternity',  label: 'Maternity Pathway' },
+    'helix-bp-alert-threshold': { el: 'fs-bp',         label: 'BP Threshold', unit: ' mmHg' },
+    'helix-parent-connect':     { el: 'fs-parent',     label: 'Parent Connect' },
+  };
+
+  function updateFlagBadge(flag, value) {
+    const cfg = FLAG_BADGES[flag];
+    if (!cfg) return;
+    const el = document.getElementById(cfg.el);
+    if (!el) return;
+    const lbl = el.querySelector('.lbl');
+    if (cfg.unit !== undefined) {                 // numeric flag (e.g. BP threshold)
+      el.className = 'flag-status num';
+      lbl.textContent = `${cfg.label}: ${value}${cfg.unit}`;
+    } else {                                       // boolean flag
+      const on = !!value;
+      el.className = 'flag-status ' + (on ? 'on' : 'off');
+      lbl.textContent = `${cfg.label}: ${on ? 'ON' : 'OFF'}`;
+    }
+  }
+
+  // Part 1 also swaps the manual workflow for the AI panel when its flag flips.
   function applyFlagState(enabled) {
-    badge.className  = enabled ? 'on' : 'off';
-    label.textContent = `Auto-Scribe: ${enabled ? 'ON' : 'OFF'}`;
     // Flag ON  → reveal the AI Auto-Scribe panel, hide the manual workflow.
     // Flag OFF → reveal the manual coding workflow, hide the AI panel.
     scribe.classList.toggle('hidden', !enabled);
@@ -891,6 +917,7 @@
   const evtSource = new EventSource(`${PYTHON_URL}/events`);
   evtSource.onmessage = e => {
     const data = JSON.parse(e.data);
+    updateFlagBadge(data.flag, data.value);
     if (data.flag === 'helix-auto-scribe') applyFlagState(data.value);
   };
   evtSource.onerror = () => {

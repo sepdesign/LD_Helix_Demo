@@ -218,6 +218,19 @@ Controls the blood-pressure threshold the Java service uses to raise an alert. U
 
 ---
 
+#### Flag 5: `helix-parent-connect` (Boolean)
+
+Feature gate for the Parent Connect AI assistant. This flag turns the whole feature on or off; the `helix-clinical-ai` AI Config (Flag 3) separately controls its model and prompt. Used in the AI Config section.
+
+1. **Features → Flags → Create flag**
+2. Name: `Helix Parent Connect`  |  Key: `helix-parent-connect`  |  Type: **Boolean**
+3. Turn it **On** (serving `true`) so the assistant is live
+4. Save. During the demo you'll toggle it **off** and watch Parent Connect fall back to the 24/7 nurse line, then back **on** to restore the AI — no redeploy.
+
+> The Python service defaults to `true` if this flag is missing, so Parent Connect works before you create it; creating the flag is what lets you disable it live. If LaunchDarkly is unreachable, the AI Config call also fails safe to the nurse line.
+
+---
+
 ## Running the Services
 
 ### Quick start (recommended)
@@ -346,6 +359,7 @@ Flags aren't only on/off switches — they can carry a value your code reads at 
 4. Open the **Parent Connect** tab and send one of the sample messages
 5. Claude responds through the HELIX-PARENT variation
 6. Update the system prompt in LD and generate again. The next call picks it up with no code change.
+7. **Disable the feature (flag):** toggle **`helix-parent-connect`** off in LD and send a Parent Connect message → it falls back to the 24/7 nurse line. Toggle it back **on** to restore the AI. (Step 6 edits the prompt via the AI Config; this on/off is a separate boolean flag — two independent controls over one feature.)
 
 ---
 
@@ -392,6 +406,8 @@ LD_Helix_Demo/
 | `helix-auto-scribe` | Boolean | Python | Part 1 Release |
 | `helix-maternity-pathway` | Boolean + Targeting | Go, Java | Part 2 Target |
 | `helix-clinical-ai` | AI Config | Python + LD AI SDK | AI Config, Parent Connect |
+| `helix-bp-alert-threshold` | Number | Java | Part 3 Alerts |
+| `helix-parent-connect` | Boolean | Python | AI Config (Parent Connect) |
 
 ---
 

@@ -181,7 +181,7 @@
   <h1>Helix Health Group</h1>
   <h3 style="color:var(--helix-light);font-size:1em;margin-top:8px;">
     LaunchDarkly in Production:<br>
-    Release &nbsp;·&nbsp; Target &nbsp;·&nbsp; Alerts &nbsp;·&nbsp; AI Config
+    Release &nbsp;·&nbsp; Target &nbsp;·&nbsp; Alerts &nbsp;·&nbsp; Parent Connect &nbsp;·&nbsp; AI Config
   </h3>
   <p style="margin-top:40px;font-size:0.44em;color:#475569;">
     Solutions Engineering Demo &nbsp;·&nbsp; 2025 &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -190,7 +190,7 @@
     <kbd style="background:#1e293b;padding:2px 6px;border-radius:4px;font-size:1em;">?</kbd> help
   </p>
   <aside class="notes">
-    Let me tell you a story about Helix Health Group, a medical group that runs forty-seven hospitals and is building the software that holds its whole network together. Over the next few minutes I'll show you how they use LaunchDarkly to ship that software quickly without ever putting a patient or a provider at risk. Everything you'll see is running live against a real LaunchDarkly environment, so when I toggle a flag, it's genuinely changing in the dashboard right in front of you. If you'd like to read along, you can press S for these speaker notes or F for fullscreen.
+    Presenting Helix Health Group, a medical group that runs forty-seven hospitals and is building the software that holds its whole network together. Over the next few minutes I'll show you how they use LaunchDarkly to ship software quickly without ever putting a patient or a provider at risk. Everything you'll see is running live against a real LaunchDarkly environment, so when I toggle a flag it is genuinely changing in the dashboard right in front of your eyes! If you'd like to read along, you can press S for these speaker notes or F for fullscreen.
   </aside>
 </section>
 
@@ -224,7 +224,7 @@
     </div>
   </div>
   <aside class="notes">
-    So who is Helix? Picture forty-seven hospitals across twelve states, six thousand providers, and more than forty thousand patient encounters every single day, everything from Level I trauma centers to dedicated birth centers. Three different engineering teams build on this one platform at the same time, and each of them lives with a very different kind of risk. The Clinical AI team is shipping automated billing, where a single wrong ICD-10 code means a denied claim. The Patient Access team is rolling out a new maternity care pathway that forty thousand encounters a day will touch. And the patient safety team owns clinical alert thresholds that have to change as guidelines evolve, without a deployment every single time. What they all need is the freedom to release and adjust on their own schedule, without waiting on or breaking each other.
+    Who is Helix? Picture forty-seven hospitals across twelve states, six thousand providers, and more than forty thousand patient encounters every single day, everything from a Level I Trauma centers to dedicated Pediatric centers. Three different engineering teams build on this one platform at the same time, and each of them lives with a very different kind of risk. The Clinical AI team is shipping automated billing, where a single wrong ICD-10 code means a denied claim. The Patient Access team is rolling out a new maternity care pathway that forty thousand encounters a day will touch. And the patient safety team owns clinical alert thresholds that have to change as guidelines evolve, without a deployment every single time. What they all need is the freedom to release and adjust on their own schedule, without waiting on or breaking each other.
   </aside>
 </section>
 
@@ -292,8 +292,8 @@
   <h2>Architecture Overview</h2>
   <div class="arch" style="margin-top:14px;">
     <div style="text-align:center;margin-bottom:18px;">
-      <span style="background:rgba(14,165,233,.2);border:1px solid var(--helix);color:var(--helix-light);padding:8px 22px;border-radius:8px;font-size:.95em;">
-        🖥&nbsp; Browser Dashboard &nbsp;(frontend/index.html, no build step, open in Chrome)
+      <span style="background:rgba(14,165,233,.2);border:1px solid var(--helix);color:var(--helix-light);padding:8px 22px;border-radius:8px;font-size:.82em;white-space:nowrap;">
+        🖥&nbsp; Browser Dashboard &nbsp;·&nbsp; frontend/index.html (no build step)
       </span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
@@ -301,7 +301,7 @@
         <div style="color:var(--ld-light);margin-bottom:7px;font-size:.88em;">↕ SSE + REST</div>
         <div class="arch-svc" style="background:rgba(124,58,237,.2);border:1px solid var(--ld);">
           <div style="color:white;font-weight:700;font-size:1.05em;">Python :8000</div>
-          <div style="color:var(--muted);font-size:.88em;">Part 1 · AI Config</div>
+          <div style="color:var(--muted);font-size:.88em;">Parts 1 · 4 · 5</div>
           <div style="color:var(--muted);font-size:.82em;">→ Anthropic Claude</div>
         </div>
       </div>
@@ -484,6 +484,18 @@ es.onmessage = (e) => {
 
 
 <!-- ══════════════════════════════════════════
+     DEMO TRANSITION: PART 1
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <h2>Now let's see the demo for Part 1!</h2>
+  <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Release &amp; Remediate</p>
+  <aside class="notes">
+    Let's switch to the live app and run Part 1. I'll release helix-auto-scribe by toggling it on and watch the panel swap with no refresh, then remediate by flipping it back off, all live and with no deploy.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
      SECTION DIVIDER: PART 2
 ══════════════════════════════════════════ -->
 <section class="section-bg">
@@ -623,6 +635,34 @@ if detail.Value {
 
 
 <!-- ══════════════════════════════════════════
+     DEMO TRANSITION: PART 2
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <h2>Now let's see the demo for Part 2!</h2>
+  <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Targeting the Maternity Pathway</p>
+  <aside class="notes">
+    Now to the live app for Part 2. I'll click through the clinician personas and watch the patient chart change per user: the maternity staff see the pathway, the ER doctor sees the standard chart, all from one targeting rule.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION DIVIDER: PART 3
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <div class="part">Part 3</div>
+  <h2>Alerts</h2>
+  <p style="color:var(--muted);font-size:0.68em;">A flag can carry a value, not just on/off — a clinical alert threshold the care team tunes from the dashboard</p>
+  <div class="callout" style="margin-top:26px;">
+    Flag: <code>helix-bp-alert-threshold</code> &nbsp;·&nbsp; Type: Number &nbsp;·&nbsp; SDK: Java
+  </div>
+  <aside class="notes">
+    Part 3 belongs to the patient safety team. A developer built a blood-pressure alert, but the threshold it fires at isn't baked into the code; it's a LaunchDarkly Number flag the clinical team owns, so they can re-tune it as guidelines change with no deployment.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
      SLIDE 16  PART 3: CONFIG-DRIVEN ALERT (JAVA)
 ══════════════════════════════════════════ -->
 <section>
@@ -659,17 +699,94 @@ boolean alert = reading >= threshold;
 
 
 <!-- ══════════════════════════════════════════
-     SECTION DIVIDER: AI CONFIG
+     DEMO TRANSITION: PART 3
 ══════════════════════════════════════════ -->
 <section class="section-bg">
-  <div class="part">Extra Credit</div>
+  <h2>Now let's see the demo for Part 3!</h2>
+  <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Configuration as a flag</p>
+  <aside class="notes">
+    Now to the live app for Part 3. I'll enter a blood-pressure reading, then lower the helix-bp-alert-threshold number flag in the dashboard and watch the very same reading flip from normal to an alert, with no redeploy.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION DIVIDER: PART 4 (PARENT CONNECT)
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <div class="part">Part 4</div>
+  <h2>Parent Connect</h2>
+  <p style="color:var(--muted);font-size:0.68em;">A patient-facing AI assistant — and the flag that turns it on or off</p>
+  <div class="callout" style="margin-top:26px;">
+    Flags: <code>helix-parent-connect</code> (gate) &nbsp;·&nbsp; <code>helix-clinical-ai</code> (AI Config) &nbsp;·&nbsp; SDK: Python
+  </div>
+  <aside class="notes">
+    Part 4 is the most human part of the demo: a 24/7 AI assistant for new parents. It shows two LaunchDarkly controls working together, a boolean flag that gates the whole feature, and the AI Config that owns the model and the prompt.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SLIDE  PART 4: PARENT CONNECT
+══════════════════════════════════════════ -->
+<section>
+  <div class="part">Part 4: Parent Connect</div>
+  <h2>"My Baby at 2am"</h2>
+  <div class="cols-6-4 cols">
+    <div>
+      <div class="callout blue" style="font-size:0.6em;margin-bottom:12px;">
+        <strong>Scenario:</strong> A first-time parent. 3am. Their 3-week-old has a fever of 100.8°F and won't stop crying — rush to the ER, or wait until morning?
+      </div>
+      <div class="callout green" style="font-size:0.6em;">
+        <strong>HELIX-PARENT</strong> gives warm, evidence-based guidance and says clearly when to call 911. A boolean flag, <code>helix-parent-connect</code>, gates the feature: toggle it off and parents fall back to the 24/7 nurse line.
+      </div>
+    </div>
+    <div>
+      <pre style="font-size:0.48em;"><code class="python"># Escalation heuristic: detect an emergency
+escalate = any(w in content.lower() for w in
+    ["911", "emergency room", "go to the ed"])
+
+# Feature flag gates the AI; off = nurse line
+if not ld.variation("helix-parent-connect",
+                    ctx, True):
+    return {
+        "response": "Our AI assistant is off. "
+            "Call the 24/7 nurse line: "
+            "1-800-HELIX-RN.",
+        "escalate": False,
+    }</code></pre>
+    </div>
+  </div>
+  <aside class="notes">
+    Let me make that concrete with my favourite example. It's three in the morning, a first-time parent's three-week-old has a fever and won't stop crying, and they honestly don't know whether to rush to the ER or wait until morning. Parent Connect, running that warm persona, gives them calm, evidence-based guidance and tells them clearly when it's time to call 911. If the response sounds like an emergency, we flag it and put the nurse line front and centre. And notice there are two independent LaunchDarkly controls here: the AI Config owns the model and the prompt, so the clinical team can reword the guidance live, while a separate boolean flag, helix-parent-connect, simply gates the whole feature, so flipping it off instantly falls back to the 24/7 nurse line and a frightened parent is never left with nothing.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     DEMO TRANSITION: PART 4
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <h2>Now let's see the demo for Part 4!</h2>
+  <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Parent Connect</p>
+  <aside class="notes">
+    Live app for Part 4. I'll send a Parent Connect message and get the warm AI guidance, then toggle the helix-parent-connect flag off and send again, watching it fall back to the 24/7 nurse line.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION DIVIDER: PART 5 (AI CONFIG)
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <div class="part">Part 5</div>
   <h2>AI Config</h2>
   <p style="color:var(--muted);font-size:0.68em;">Control your AI models and prompts from the LaunchDarkly dashboard</p>
   <div class="callout" style="margin-top:26px;">
     Flag: <code>helix-clinical-ai</code> &nbsp;·&nbsp; Type: AI Config &nbsp;·&nbsp; SDK: Python + LD AI SDK
   </div>
   <aside class="notes">
-    There's one more thing every health system I talk to is wrestling with right now, and it's a good place to end: how do you manage AI responsibly? Helix runs three different clinical AI personas, and today, every time someone wants to tweak a prompt or change a model, it's a code change and a deployment. LaunchDarkly's AI Config is built for exactly this — the flag is helix-clinical-ai, and it controls the model and the prompt from the dashboard.
+    Finally, Part 5: how do you manage AI responsibly? Helix runs three different clinical AI personas, and today every prompt tweak or model change is a code change and a deployment. LaunchDarkly's AI Config is built for exactly this; the helix-clinical-ai config controls the model and the prompt from the dashboard.
   </aside>
 </section>
 
@@ -678,7 +795,7 @@ boolean alert = reading >= threshold;
      SLIDE 20  AI DEPLOYMENT PROBLEM
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">AI Config: The Problem</div>
+  <div class="part">Part 5: The Problem</div>
   <h2>AI Prompts Shouldn't Live in Code</h2>
   <div class="cards cards-2" style="margin-top:16px;">
     <div class="callout red">
@@ -708,7 +825,7 @@ boolean alert = reading >= threshold;
      SLIDE 21  THREE PERSONAS
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">AI Config: Three Variations</div>
+  <div class="part">Part 5: Three Variations</div>
   <h2>Three Clinical AI Personas</h2>
   <table style="margin-top:16px;">
     <tr><th>Context Attribute</th><th>Persona</th><th>Model</th><th>Purpose</th></tr>
@@ -745,7 +862,7 @@ boolean alert = reading >= threshold;
      SLIDE 22  AI CONFIG CODE
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">AI Config: Integration</div>
+  <div class="part">Part 5: Integration</div>
   <h2>One Code Path. Many Configurations.</h2>
   <pre style="font-size:0.5em;"><code class="python">from ldai.client import LDAIClient, AIConfig
 ai_client = LDAIClient(ld)            # wraps your existing LD client
@@ -771,37 +888,13 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
 
 
 <!-- ══════════════════════════════════════════
-     SLIDE 23  PARENT CONNECT
+     DEMO TRANSITION: PART 5
 ══════════════════════════════════════════ -->
-<section>
-  <div class="part">AI Config: Parent Connect</div>
-  <h2>"My Baby at 2am"</h2>
-  <div class="cols-6-4 cols">
-    <div>
-      <div class="callout blue" style="font-size:0.6em;margin-bottom:12px;">
-        <strong>Scenario:</strong> A first-time parent. 3am. Their 3-week-old has a fever of 100.8°F and won't stop crying — rush to the ER, or wait until morning?
-      </div>
-      <div class="callout green" style="font-size:0.6em;">
-        <strong>HELIX-PARENT</strong> gives warm, evidence-based guidance and says clearly when to call 911. If it detects an emergency, an escalation flag triggers the nurse-line workflow — and if the AI is off, it falls back to the 24/7 nurse line.
-      </div>
-    </div>
-    <div>
-      <pre style="font-size:0.48em;"><code class="python"># Escalation heuristic: detect an emergency
-escalate = any(w in content.lower() for w in
-    ["911", "emergency room", "go to the ed"])
-
-# Graceful fallback when the AI Config is OFF
-if not ai_config.enabled:
-    return {
-        "response": "Our AI assistant is "
-            "unavailable — please call the "
-            "24/7 nurse line: 1-800-HELIX-RN.",
-        "escalate": False,
-    }</code></pre>
-    </div>
-  </div>
+<section class="section-bg">
+  <h2>Now let's see the demo for Part 5!</h2>
+  <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; AI Config</p>
   <aside class="notes">
-    Let me make that concrete with my favourite example. It's three in the morning, a first-time parent's three-week-old has a fever and won't stop crying, and they honestly don't know whether to rush to the ER or wait until morning. Parent Connect, running that warm persona, gives them calm, evidence-based guidance and tells them clearly when it's time to call 911. If the response sounds like an emergency, we flag it and put the nurse line front and centre. And if the AI feature is switched off for any reason, it falls back gracefully to the 24/7 nurse line, so a frightened parent is never left with nothing.
+    Finally, the live app for Part 5. I'll generate billing codes, then change a model or a prompt in the helix-clinical-ai AI Config and run it again; the next call picks up the new configuration instantly, with no deploy.
   </aside>
 </section>
 

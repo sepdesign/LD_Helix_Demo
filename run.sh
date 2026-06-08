@@ -2,13 +2,17 @@
 #
 # run.sh - start the Helix Health Group LaunchDarkly demo (all four services).
 #
+# Safe to run any time. It checks each service's port and starts ONLY the ones that
+# aren't already running, so if some services are already up it just fills in the
+# gaps - it never stops or restarts a running service (use ./stop.sh for that).
+#
 # What it does, in order:
-#   1. Runs the prerequisite check (scripts/check_prerequisites.py) and stops
-#      if anything required is missing (toolchain, .env keys, ...).
-#   2. For each service, checks whether its port is already listening.
-#   3. Starts only the services that are NOT already up, in the background,
-#      with each service's output written to logs/<name>.log.
-#   4. Waits for the ports to come up and prints a status table.
+#   1. Runs the prerequisite check (scripts/check_prerequisites.py) for visibility.
+#      It WARNS but never aborts, so a missing build tool - or a service that is
+#      already running - never stops the other services from starting.
+#   2. Starts each service only if its port is free, in the background, with output
+#      written to logs/<name>.log.
+#   3. Waits for the ports to come up and prints a status table.
 #
 # Usage:  ./run.sh   (or: bash run.sh)   - run from anywhere; it cd's to the repo.
 # Stop:   ./stop.sh
@@ -68,12 +72,15 @@ echo "============================================================"
 echo " Helix LaunchDarkly demo - run.sh"
 echo "============================================================"
 
-# 1. Prerequisites (aborts on any required failure; warnings are allowed).
+# 1. Prerequisites - informational only. We WARN but never abort, so a build tool
+#    that isn't on this shell's PATH (or a service that is already running) never
+#    stops the other services from starting. Anything truly broken shows DOWN below.
 echo ">> checking prerequisites ..."
 if ! "$PY" "$ROOT/scripts/check_prerequisites.py"; then
   echo
-  echo ">> prerequisite check FAILED - fix the [FAIL] items above, then re-run." >&2
-  exit 1
+  echo ">> heads-up: some prerequisite checks reported [FAIL] above. Continuing anyway -"
+  echo ">> already-running services are skipped, and any service that still can't start"
+  echo ">> will show DOWN below, with the reason in its logs/<name>.log."
 fi
 
 # 2 + 3. Start whatever is not already up.
@@ -83,11 +90,12 @@ start_svc go       8001 go-service     go run main.go
 start_svc java     8002 java-service   mvn spring-boot:run
 start_svc frontend 3000 frontend       "$PY" -m http.server 3000
 
-# 4. Wait for ports and report. Java/Maven is slowest, so give it the most time.
+# 4. Wait for ports and report. Go and Java COMPILE on start (go run / mvn spring-boot:run),
+#    so they get generous timeouts - a slow first compile is not a failure.
 echo
-echo ">> waiting for services to come up (Java/Maven can take a while) ..."
+echo ">> waiting for services to come up (Go and Java compile on start, so allow time) ..."
 wait_up 8000 40;  py_ok=$?
-wait_up 8001 40;  go_ok=$?
+wait_up 8001 75;  go_ok=$?
 wait_up 8002 120; jv_ok=$?
 wait_up 3000 15;  fe_ok=$?
 

@@ -46,7 +46,7 @@ Now, how does the feature appear the very moment we flip the flag without anyone
 ========================================================================
 SLIDE 9  |  Part 1: DEMO  |  Releasing helix-auto-scribe
 ========================================================================
-Let's actually do it. Right now the badge in the corner reads OFF. I'll go into LaunchDarkly, find helix-auto-scribe, and toggle it on. Watch as the panel appears here on its own with no refresh. From there I'll leave it on the Emergency Department, where a sample encounter is already filled in, and click Generate Billing Codes; the model returns the diagnosis, the ICD-10 and CPT codes, and a short rationale in a couple of seconds. And just like that, all six thousand providers can use AI-assisted coding, with no deployment, no restart, and code pushs.
+Let's actually do it. Right now the badge in the corner reads OFF. I'll go into LaunchDarkly, find helix-auto-scribe, and toggle it on. Watch as the panel appears here on its own with no refresh. From there I'll leave it on the Emergency Department, where a sample encounter is already filled in, and click Generate Billing Codes; the model returns the diagnosis, the ICD-10 and CPT codes, and a short rationale in a couple of seconds. And just like that, all six thousand providers can use AI-assisted coding, with no deployment, no restart, and code pushes.
 
 ========================================================================
 SLIDE 10  |  Part 1: Remediate  |  Something Went Wrong
@@ -71,7 +71,7 @@ Here's what we're rolling out. For maternity staff the patient chart becomes a r
 ========================================================================
 SLIDE 14  |  Part 2: Target  |  One Rule Decides Who's In
 ========================================================================
-And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls processes through to the original chart. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
+And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls through to the original chart. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
 
 ========================================================================
 SLIDE 15  |  Part 2: Target  |  How the Go SDK Evaluates It

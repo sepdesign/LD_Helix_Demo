@@ -180,7 +180,7 @@
     /* ------------------------------------------------------------------ */
     /* Code result box (Part 1 billing-code JSON output)                    */
     /* It grows to fit its content and wraps long lines, so it never shows  */
-    /* a horizontal or vertical scrollbar — it just gets as tall as needed. */
+    /* a horizontal or vertical scrollbar, it just gets as tall as needed. */
     /* ------------------------------------------------------------------ */
     #coding-result {
       background: #1a2333; color: #e2e8f0;
@@ -296,7 +296,7 @@
     .badge-part { background: #fef3c7; color: #92400e; }
 
     /* ------------------------------------------------------------------ */
-    /* Demo driver — inline presenter runbook (commands to drive a panel)  */
+    /* Demo driver: inline presenter runbook (commands to drive a panel)  */
     /* ------------------------------------------------------------------ */
     details.driver {
       background: #0f1b2d; border: 1px solid #1e3a5f;
@@ -341,7 +341,7 @@
     details.driver .copy-btn:hover { background: var(--accent); color: #fff; }
     details.driver .copy-btn.copied { background: var(--ok); color: #fff; }
 
-    /* "REST commands" — reuses the driver styling (these <details> also carry the
+    /* "REST commands": reuses the driver styling (these <details> also carry the
        class "driver"), but secondary-colored and collapsed by default, so curl /
        Postman stays out of the way and the visible steps stay UI-first. */
     details.rest-commands {
@@ -391,16 +391,16 @@
     <div id="p1" class="panel active">
       <div class="flag-status off" id="fs-autoscribe"><span class="dot"></span><span class="lbl">Auto-Scribe: OFF</span></div>
       <details class="driver" open>
-        <summary>🎬 Demo driver — flip the switch (Part 1)</summary>
+        <summary>🎬 Demo driver: flip the switch (Part 1)</summary>
         <ol>
-          <li><strong>Start state:</strong> the badge reads <strong>Auto-Scribe: OFF</strong>, and below you see the tedious <strong>manual coding workflow</strong> — hand-picking every ICD-10 and CPT code is the status quo this feature replaces.</li>
-          <li><strong>Release (turn ON):</strong> flip <span class="ld-path">Flags → helix-auto-scribe</span> <strong>ON</strong> in the dashboard — the manual form is replaced by the AI Auto-Scribe panel instantly over SSE, no reload.</li>
-          <li><strong>Prove it:</strong> click <strong>Generate Billing Codes</strong> — the codes the provider was hunting for by hand now appear in seconds.</li>
-          <li><strong>Remediate (turn OFF):</strong> flip the same flag back <strong>OFF</strong> — the panel vanishes instantly, no redeploy.</li>
+          <li><strong>Start state:</strong> the badge reads <strong>Auto-Scribe: OFF</strong>, and below you see the tedious <strong>manual coding workflow</strong>: hand-picking every ICD-10 and CPT code is the status quo this feature replaces.</li>
+          <li><strong>Release (turn ON):</strong> flip <span class="ld-path">Flags → helix-auto-scribe</span> <strong>ON</strong> in the dashboard. The manual form is replaced by the AI Auto-Scribe panel instantly over SSE, no reload.</li>
+          <li><strong>Prove it:</strong> click <strong>Generate Billing Codes</strong>: the codes the provider was hunting for by hand now appear in seconds.</li>
+          <li><strong>Remediate (turn OFF):</strong> flip the same flag back <strong>OFF</strong>: the panel vanishes instantly, no redeploy.</li>
         </ol>
       </details>
       <details class="driver rest-commands">
-        <summary>⌨ REST commands (optional — the dashboard toggle does the same)</summary>
+        <summary>⌨ REST commands (optional, the dashboard toggle does the same)</summary>
         <p>Prefer curl or Postman? The same release / remediate runs through the LaunchDarkly REST API:</p>
         <ol>
           <li><strong>One-time setup:</strong> create an API access token at <span class="ld-path">Account settings → Authorization → Access tokens</span> (write access to the Test environment) and use it as the <code>Authorization</code> header value. For curl, export it as <code>LD_API_TOKEN</code> (bash: <code>export LD_API_TOKEN=api-…</code> · PowerShell: <code>$env:LD_API_TOKEN="api-…"</code>). The project key is <code>default</code> unless you created a custom project.</li>
@@ -436,7 +436,7 @@
       <!-- ============================================================ -->
       <!-- The "BEFORE": manual coding workflow.                        -->
       <!-- Shown while helix-auto-scribe is OFF. This is the tedious    -->
-      <!-- status quo the AI feature replaces — read the encounter and  -->
+      <!-- status quo the AI feature replaces, read the encounter and  -->
       <!-- hand-pick every ICD-10 / CPT code. The SSE listener hides    -->
       <!-- this and reveals the AI panel the moment the flag flips ON.  -->
       <!-- ============================================================ -->
@@ -458,39 +458,39 @@
           <div>
             <label>Primary diagnosis (ICD-10)</label>
             <select class="m-icd">
-              <option value="">— search the ICD-10 manual —</option>
-              <option>S22.42XA — Multiple fractures of ribs, left side, initial</option>
-              <option>S22.41XA — Multiple fractures of ribs, right side, initial</option>
-              <option>S27.0XXA — Traumatic pneumothorax, initial encounter</option>
-              <option>S20.211A — Contusion of left front chest wall, initial</option>
-              <option>S22.39XA — Fracture of one rib, unspecified side, initial</option>
-              <option>R07.9 — Chest pain, unspecified</option>
-              <option>R06.02 — Shortness of breath</option>
-              <option>J93.11 — Primary spontaneous pneumothorax</option>
-              <option>V43.52XA — Car driver injured in collision, initial</option>
-              <option>I10 — Essential (primary) hypertension</option>
-              <option>E11.9 — Type 2 diabetes without complications</option>
-              <option>M54.50 — Low back pain, unspecified</option>
-              <option>R51.9 — Headache, unspecified</option>
-              <option>Z51.11 — Encounter for antineoplastic chemotherapy</option>
+              <option value="">search the ICD-10 manual</option>
+              <option>S22.42XA: Multiple fractures of ribs, left side, initial</option>
+              <option>S22.41XA: Multiple fractures of ribs, right side, initial</option>
+              <option>S27.0XXA: Traumatic pneumothorax, initial encounter</option>
+              <option>S20.211A: Contusion of left front chest wall, initial</option>
+              <option>S22.39XA: Fracture of one rib, unspecified side, initial</option>
+              <option>R07.9: Chest pain, unspecified</option>
+              <option>R06.02: Shortness of breath</option>
+              <option>J93.11: Primary spontaneous pneumothorax</option>
+              <option>V43.52XA: Car driver injured in collision, initial</option>
+              <option>I10: Essential (primary) hypertension</option>
+              <option>E11.9: Type 2 diabetes without complications</option>
+              <option>M54.50: Low back pain, unspecified</option>
+              <option>R51.9: Headache, unspecified</option>
+              <option>Z51.11: Encounter for antineoplastic chemotherapy</option>
             </select>
           </div>
           <div>
             <label>Secondary diagnosis (ICD-10)</label>
             <select class="m-icd">
-              <option value="">— search the ICD-10 manual —</option>
-              <option>S27.0XXA — Traumatic pneumothorax, initial encounter</option>
-              <option>S22.42XA — Multiple fractures of ribs, left side, initial</option>
-              <option>R09.02 — Hypoxemia</option>
-              <option>S20.211A — Contusion of left front chest wall, initial</option>
-              <option>R06.02 — Shortness of breath</option>
-              <option>R07.9 — Chest pain, unspecified</option>
-              <option>J93.11 — Primary spontaneous pneumothorax</option>
-              <option>I10 — Essential (primary) hypertension</option>
-              <option>E11.9 — Type 2 diabetes without complications</option>
-              <option>Z79.4 — Long term (current) use of insulin</option>
-              <option>F17.210 — Nicotine dependence, cigarettes</option>
-              <option>M54.50 — Low back pain, unspecified</option>
+              <option value="">search the ICD-10 manual</option>
+              <option>S27.0XXA: Traumatic pneumothorax, initial encounter</option>
+              <option>S22.42XA: Multiple fractures of ribs, left side, initial</option>
+              <option>R09.02: Hypoxemia</option>
+              <option>S20.211A: Contusion of left front chest wall, initial</option>
+              <option>R06.02: Shortness of breath</option>
+              <option>R07.9: Chest pain, unspecified</option>
+              <option>J93.11: Primary spontaneous pneumothorax</option>
+              <option>I10: Essential (primary) hypertension</option>
+              <option>E11.9: Type 2 diabetes without complications</option>
+              <option>Z79.4: Long term (current) use of insulin</option>
+              <option>F17.210: Nicotine dependence, cigarettes</option>
+              <option>M54.50: Low back pain, unspecified</option>
             </select>
           </div>
         </div>
@@ -498,27 +498,27 @@
           <div>
             <label>Procedure (CPT)</label>
             <select class="m-cpt">
-              <option value="">— search the CPT manual —</option>
-              <option>32551 — Tube thoracostomy (chest tube), open</option>
-              <option>71250 — CT thorax without contrast</option>
-              <option>71046 — Chest X-ray, 2 views</option>
-              <option>94762 — Pulse oximetry, continuous</option>
-              <option>36556 — Central venous catheter insertion</option>
-              <option>31500 — Intubation, emergency</option>
-              <option>12001 — Simple wound repair</option>
-              <option>99213 — Office visit, established patient</option>
-              <option>93000 — Electrocardiogram, routine</option>
+              <option value="">search the CPT manual</option>
+              <option>32551: Tube thoracostomy (chest tube), open</option>
+              <option>71250: CT thorax without contrast</option>
+              <option>71046: Chest X-ray, 2 views</option>
+              <option>94762: Pulse oximetry, continuous</option>
+              <option>36556: Central venous catheter insertion</option>
+              <option>31500: Intubation, emergency</option>
+              <option>12001: Simple wound repair</option>
+              <option>99213: Office visit, established patient</option>
+              <option>93000: Electrocardiogram, routine</option>
             </select>
           </div>
           <div>
             <label>E&amp;M complexity level</label>
             <select class="m-cpt">
-              <option value="">— select level —</option>
-              <option>99281 — ED visit, low complexity</option>
-              <option>99282 — ED visit, low-moderate complexity</option>
-              <option>99283 — ED visit, moderate complexity</option>
-              <option>99284 — ED visit, moderate-high complexity</option>
-              <option>99285 — ED visit, high complexity</option>
+              <option value="">select level</option>
+              <option>99281: ED visit, low complexity</option>
+              <option>99282: ED visit, low-moderate complexity</option>
+              <option>99283: ED visit, moderate complexity</option>
+              <option>99284: ED visit, moderate-high complexity</option>
+              <option>99285: ED visit, high complexity</option>
             </select>
           </div>
         </div>
@@ -535,7 +535,7 @@
         <span class="badge badge-part" style="background:#d4f3e8;color:#1a7a4e">New workflow</span>
         <h2 style="margin-top:.5rem">✨ AI Auto-Scribe: Active</h2>
         <p>
-          Same encounter — no manual code hunting. Drop in the clinical encounter and generate
+          Same encounter, no manual code hunting. Drop in the clinical encounter and generate
           ICD-10 + CPT codes in seconds. The model and prompt are controlled by the
           <strong>helix-clinical-ai</strong> AI Config in LaunchDarkly, so the provider reviews
           the codes instead of picking every one by hand.
@@ -580,12 +580,12 @@
         <h2 style="color:var(--danger)">⚡ Remediate: Instant Flag-Off</h2>
         <p>
           Simulate a billing audit catching an overcoding issue: turn <strong>helix-auto-scribe</strong>
-          <strong>OFF</strong> in LaunchDarkly and it flips system-wide in under 200&nbsp;ms — no deployment,
+          <strong>OFF</strong> in LaunchDarkly and it flips system-wide in under 200&nbsp;ms, no deployment,
           no incident bridge. The flag turns off → SSE fires → this UI updates instantly.
         </p>
         <p style="font-size:.8rem;color:var(--muted)">
           Prefer curl, Postman, or a monitoring webhook over the dashboard toggle? The REST version and
-          token setup are in the <strong>⌨ REST commands</strong> box at the top of this panel — and
+          token setup are in the <strong>⌨ REST commands</strong> box at the top of this panel, and
           LaunchDarkly flag <em>triggers</em> can generate a no-token webhook for exactly this.
         </p>
       </div>
@@ -598,22 +598,22 @@
     <div id="p2" class="panel">
       <div class="flag-status off" id="fs-maternity"><span class="dot"></span><span class="lbl">Maternity Pathway: OFF</span></div>
       <details class="driver" open>
-        <summary>🎬 Demo driver — targeting (Part 2)</summary>
+        <summary>🎬 Demo driver: targeting (Part 2)</summary>
         <ol>
-          <li><strong>The story:</strong> the <span class="ld-path">helix-maternity-pathway</span> flag controls who can <em>see</em> a patient's Maternity Care Pathway. One rule decides — <code>department is maternity → access granted</code>, everyone else off.</li>
+          <li><strong>The story:</strong> the <span class="ld-path">helix-maternity-pathway</span> flag controls who can <em>see</em> a patient's Maternity Care Pathway. One rule decides, <code>department is maternity → access granted</code>, everyone else off.</li>
           <li><strong>See who has access:</strong> click <strong>Dr. Alvarez (Maternity)</strong> → her chart shows the full pathway (care plan, stages, order sets). Click <strong>Dr. Reed (Emergency)</strong> → he sees only the standard chart; that information is hidden from him.</li>
-          <li><strong>Grant access live:</strong> follow the <em>"Change who has access"</em> card at the bottom — add the ER to the rule in LD, then re-click Dr. Reed and he sees the very same information. No redeploy.</li>
+          <li><strong>Grant access live:</strong> follow the <em>"Change who has access"</em> card at the bottom, add the ER to the rule in LD, then re-click Dr. Reed and he sees the very same information. No redeploy.</li>
           <li><strong>Under the hood:</strong> the Go SDK evaluates per user. Expand <em>"LaunchDarkly evaluation detail"</em> under the chart for the reason (<code>RULE_MATCH</code> / <code>FALLTHROUGH</code>) and the exact context sent.</li>
         </ol>
       </details>
       <details class="driver rest-commands">
-        <summary>⌨ REST commands (optional — the dashboard does the same)</summary>
+        <summary>⌨ REST commands (optional, the dashboard does the same)</summary>
         <p>Grant the ER access through the LaunchDarkly REST API instead of editing the rule by hand (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
         <ol>
-          <li><strong>Grant access</strong> — add Emergency to the maternity rule:
+          <li><strong>Grant access</strong>: add Emergency to the maternity rule:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-maternity-pathway" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"addValuesToClause","ruleId":"94519ad8-6d12-4e0c-b04c-9d32c4295334","clauseId":"65217d87-1072-44b2-9589-91f776028e4e","values":["emergency"]}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
-          <li><strong>Revert</strong> — remove Emergency again:
+          <li><strong>Revert</strong>: remove Emergency again:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-maternity-pathway" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"removeValuesFromClause","ruleId":"94519ad8-6d12-4e0c-b04c-9d32c4295334","clauseId":"65217d87-1072-44b2-9589-91f776028e4e","values":["emergency"]}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
@@ -624,7 +624,7 @@
         <h2 style="margin-top:.5rem">Part 2: Targeting the Maternity Care Pathway</h2>
         <p>
           The <strong>helix-maternity-pathway</strong> flag controls <em>who can see</em> a
-          patient's Maternity Care Pathway — the care plan, the stage tracker, and the order
+          patient's Maternity Care Pathway, the care plan, the stage tracker, and the order
           sets. One targeting rule decides: <code>department is maternity → access granted</code>,
           and everyone else sees only the standard chart. Pick a clinician below; the Go SDK
           evaluates the flag for them and the chart updates to show exactly what that person
@@ -657,11 +657,11 @@
 
       <!-- The payoff: change who has access, live, and show WHY you'd do it. -->
       <div class="card" style="border-left:4px solid var(--brand)">
-        <h2>🔓 Change who has access — live, no deploy</h2>
+        <h2>🔓 Change who has access, live, no deploy</h2>
         <p>
           <strong>Scenario:</strong> Helix's Emergency Department starts taking maternity
           overflow on weekends, so leadership decides ER attendings should see the Maternity
-          Care Pathway too. Right now <strong>Dr. Reed (Emergency)</strong> can't — let's grant
+          Care Pathway too. Right now <strong>Dr. Reed (Emergency)</strong> can't. Let's grant
           him access without shipping any code.
         </p>
         <ol style="font-size:.85rem;color:var(--text);line-height:1.9;padding-left:1.25rem">
@@ -684,21 +684,21 @@
     <div id="p2j" class="panel">
       <div class="flag-status num" id="fs-bp"><span class="dot"></span><span class="lbl">BP Threshold: 140 mmHg</span></div>
       <details class="driver" open>
-        <summary>🎬 Demo driver — Part 3 (Java SDK)</summary>
+        <summary>🎬 Demo driver: Part 3 (Java SDK)</summary>
         <ol>
           <li><strong>Check a reading:</strong> enter a systolic blood pressure and click <strong>Check reading</strong>. The Java service compares it against the alert threshold it reads from LaunchDarkly. The default 135 is below the 140 threshold, so it comes back NORMAL.</li>
           <li><strong>The wow:</strong> in LD, lower <span class="ld-path">helix-bp-alert-threshold</span> from 140 to 130, then check the same 135 reading again → it flips from <strong>NORMAL</strong> to <strong>🚨 ALERT</strong>. No deploy, no restart; the Java SDK read the new threshold live.</li>
-          <li>The alert <em>logic</em> lives in code; the <em>threshold</em> is a <strong>Number</strong> flag the clinical team owns — so a flag here carries configuration, not just on/off.</li>
+          <li>The alert <em>logic</em> lives in code; the <em>threshold</em> is a <strong>Number</strong> flag the clinical team owns, so a flag here carries configuration, not just on/off.</li>
         </ol>
       </details>
       <details class="driver rest-commands">
-        <summary>⌨ REST commands (optional — the dashboard does the same)</summary>
-        <p>Change the alert threshold through the LaunchDarkly REST API — this Number flag serves <strong>140 when ON</strong> and <strong>130 when OFF</strong> (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <summary>⌨ REST commands (optional, the dashboard does the same)</summary>
+        <p>Change the alert threshold through the LaunchDarkly REST API. This Number flag serves <strong>140 when ON</strong> and <strong>130 when OFF</strong> (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
         <ol>
-          <li><strong>Lower to 130</strong> (turn OFF) — a 135 reading now ALERTs:
+          <li><strong>Lower to 130</strong> (turn OFF), a 135 reading now ALERTs:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-bp-alert-threshold" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
-          <li><strong>Back to 140</strong> (turn ON) — 135 is NORMAL again:
+          <li><strong>Back to 140</strong> (turn ON), 135 is NORMAL again:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-bp-alert-threshold" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOn"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
@@ -708,7 +708,7 @@
         <span class="badge badge-sdk" style="margin-left:.4rem">Java SDK</span>
         <h2 style="margin-top:.5rem">Part 3: Configuration, Not Just On/Off</h2>
         <p>
-          Flags aren't only switches — they can carry a <em>value</em> your code reads at
+          Flags aren't only switches. They can carry a <em>value</em> your code reads at
           runtime. A developer built this blood-pressure alert; the clinical team owns the
           threshold and tunes it from LaunchDarkly with no deploy. The Java service reads
           <strong>helix-bp-alert-threshold</strong> (a <strong>Number</strong> flag, default
@@ -730,21 +730,21 @@
     <!-- ================================================================ -->
     <div id="ai" class="panel">
       <details class="driver" open>
-        <summary>🎬 Demo driver — AI Config (swap the model)</summary>
+        <summary>🎬 Demo driver: AI Config (swap the model)</summary>
         <ol>
           <li><strong>ED persona:</strong> select <strong>ED</strong> below and click <strong>Generate Codes via AI Config</strong> → served by HELIX-SCRIBE-ED (Haiku).</li>
-          <li><strong>OB persona:</strong> select <strong>OB</strong> and generate again → served by HELIX-SCRIBE-OB (Sonnet). Same flag, different model — zero code change.</li>
-          <li><strong>Live switch:</strong> in LaunchDarkly open <span class="ld-path">AI Configs → helix-clinical-ai</span>, change a variation's model or instructions, then <strong>Save</strong>. Click Generate again — the next call uses the new config instantly.</li>
+          <li><strong>OB persona:</strong> select <strong>OB</strong> and generate again → served by HELIX-SCRIBE-OB (Sonnet). Same flag, different model, zero code change.</li>
+          <li><strong>Live switch:</strong> in LaunchDarkly open <span class="ld-path">AI Configs → helix-clinical-ai</span>, change a variation's model or instructions, then <strong>Save</strong>. Click Generate again, the next call uses the new config instantly.</li>
         </ol>
       </details>
       <details class="driver rest-commands">
-        <summary>⌨ REST commands (optional — beta AI Configs API)</summary>
-        <p>Each persona's model + prompt lives in the <strong>helix-clinical-ai</strong> AI Config. Read or swap them through the LaunchDarkly <strong>AI Configs</strong> REST API — note the <code>LD-API-Version: beta</code> header (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <summary>⌨ REST commands (optional, beta AI Configs API)</summary>
+        <p>Each persona's model + prompt lives in the <strong>helix-clinical-ai</strong> AI Config. Read or swap them through the LaunchDarkly <strong>AI Configs</strong> REST API, note the <code>LD-API-Version: beta</code> header (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
         <ol>
-          <li><strong>Read the live config</strong> — every variation and its model:
+          <li><strong>Read the live config</strong>: every variation and its model:
             <div class="cmd"><code>curl "https://app.launchdarkly.com/api/v2/projects/default/ai-configs/helix-clinical-ai" -H "Authorization: $LD_API_TOKEN" -H "LD-API-Version: beta"</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
-          <li><strong>Swap the ED persona's model</strong> (Haiku → Sonnet) — updates the <code>helix-scribe-ed</code> variation; the next Generate call uses it:
+          <li><strong>Swap the ED persona's model</strong> (Haiku → Sonnet), updates the <code>helix-scribe-ed</code> variation; the next Generate call uses it:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/projects/default/ai-configs/helix-clinical-ai/variations/helix-scribe-ed" -H "Authorization: $LD_API_TOKEN" -H "LD-API-Version: beta" -H "Content-Type: application/json" -d '{"name":"HELIX-SCRIBE-ED","modelConfigKey":"Anthropic.claude-sonnet-4-5","messages":[{"role":"system","content":"You are HELIX-SCRIBE-ED, a clinical coding assistant for emergency medicine. Extract ICD-10 and CPT codes from the encounter transcript. Return valid JSON only. No markdown."}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
@@ -819,19 +819,19 @@
     <div id="parent" class="panel">
       <div class="flag-status on" id="fs-parent"><span class="dot"></span><span class="lbl">Parent Connect: ON</span></div>
       <details class="driver" open>
-        <summary>🎬 Demo driver — Parent Connect</summary>
+        <summary>🎬 Demo driver: Parent Connect</summary>
         <ol>
           <li><strong>Normal guidance:</strong> click <strong>Sample: Fever</strong>, then <strong>Send</strong> → warm reply from the HELIX-PARENT variation (Sonnet).</li>
           <li><strong>Escalation:</strong> click <strong>Sample: Breathing</strong>, then <strong>Send</strong> → the red 🚨 emergency banner appears (escalation heuristic on the response).</li>
-          <li><strong>Live prompt update:</strong> edit the HELIX-PARENT variation in <span class="ld-path">AI Configs → helix-clinical-ai</span>, <strong>Save</strong>, and send again — new guidance, no deploy.</li>
+          <li><strong>Live prompt update:</strong> edit the HELIX-PARENT variation in <span class="ld-path">AI Configs → helix-clinical-ai</span>, <strong>Save</strong>, and send again, new guidance, no deploy.</li>
           <li><strong>Graceful fallback (feature flag):</strong> toggle <span class="ld-path">helix-parent-connect</span> <strong>off</strong> in LD, then send a message → the UI falls back to the 24/7 nurse-line message. Toggle it back on to restore the AI. (Prompt editing in step 3 is the AI Config; this on/off is a plain boolean flag.)</li>
         </ol>
       </details>
       <details class="driver rest-commands">
-        <summary>⌨ REST commands (optional — the dashboard does the same)</summary>
+        <summary>⌨ REST commands (optional, the dashboard does the same)</summary>
         <p>Flip the Parent Connect feature flag through the LaunchDarkly REST API (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
         <ol>
-          <li><strong>Graceful fallback</strong> (turn OFF) — replies fall back to the 24/7 nurse line:
+          <li><strong>Graceful fallback</strong> (turn OFF), replies fall back to the 24/7 nurse line:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-parent-connect" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
           <li><strong>Restore the AI</strong> (turn ON):
@@ -1025,7 +1025,7 @@
   evtSource.onerror = () => {
     setSvc('svc-python', false);   // SSE dropped; the 5s poll + EventSource retry flip it back when the service returns
     document.getElementById('sse-indicator').innerHTML =
-      '<span style="color:var(--danger)">⚠ SSE disconnected — run ./run.sh to restart the backend.</span>';
+      '<span style="color:var(--danger)">⚠ SSE disconnected. Run ./run.sh to restart the backend.</span>';
   };
 
   // -----------------------------------------------------------------------
@@ -1079,7 +1079,7 @@
 
   // -----------------------------------------------------------------------
   // Manual coding workflow (the "before", shown when the flag is OFF).
-  // These functions deliberately call no backend — their only purpose is to
+  // These functions deliberately call no backend. Their only purpose is to
   // make the manual process feel as tedious as it really is, so the AI panel
   // lands harder by contrast.
   // -----------------------------------------------------------------------
@@ -1089,14 +1089,14 @@
     wrap.innerHTML = `
       <label>Additional diagnosis (ICD-10)</label>
       <select class="m-icd">
-        <option value="">— search the ICD-10 manual —</option>
-        <option>S27.0XXA — Traumatic pneumothorax, initial encounter</option>
-        <option>R09.02 — Hypoxemia</option>
-        <option>S20.211A — Contusion of left front chest wall, initial</option>
-        <option>R06.02 — Shortness of breath</option>
-        <option>R07.9 — Chest pain, unspecified</option>
-        <option>I10 — Essential (primary) hypertension</option>
-        <option>F17.210 — Nicotine dependence, cigarettes</option>
+        <option value="">search the ICD-10 manual</option>
+        <option>S27.0XXA: Traumatic pneumothorax, initial encounter</option>
+        <option>R09.02: Hypoxemia</option>
+        <option>S20.211A: Contusion of left front chest wall, initial</option>
+        <option>R06.02: Shortness of breath</option>
+        <option>R07.9: Chest pain, unspecified</option>
+        <option>I10: Essential (primary) hypertension</option>
+        <option>F17.210: Nicotine dependence, cigarettes</option>
       </select>`;
     document.getElementById('manual-extra').appendChild(wrap);
   }
@@ -1108,7 +1108,7 @@
     out.style.display = 'block';
     if (codes.length === 0) {
       out.style.color = 'var(--danger)';
-      out.textContent = '⚠ Nothing selected yet — you still have to find and enter every code by hand, for this encounter and the next one, all shift long.';
+      out.textContent = '⚠ Nothing selected yet. You still have to find and enter every code by hand, for this encounter and the next one, all shift long.';
     } else {
       out.style.color = 'var(--muted)';
       out.innerHTML = `Submitted ${codes.length} code(s) for one encounter. Now repeat this for every patient, around 20 minutes each. <strong>That is the workload helix-auto-scribe removes when you flip it on.</strong>`;
@@ -1148,7 +1148,7 @@
     }
   }
 
-  // Access GRANTED: this clinician can see the full Maternity Care Pathway —
+  // Access GRANTED: this clinician can see the full Maternity Care Pathway
   // the stage tracker, the care plan, and the order sets. (No AI here; this is
   // simply the gated patient information being shown.)
   function pathwayChart(ctx) {
@@ -1156,7 +1156,7 @@
       <div class="chart pathway">
         <div class="chart-head">
           <div><strong>Jane Doe</strong> · 32F · G2P1 · 39w2d · MRN 558203</div>
-          <span class="chart-tag granted">✓ Maternity Care Pathway — full access</span>
+          <span class="chart-tag granted">✓ Maternity Care Pathway, full access</span>
         </div>
         <div class="stage-tracker">
           <span class="stage done">Prenatal</span>
@@ -1164,7 +1164,7 @@
           <span class="stage current">Labor &amp; Delivery</span>
           <span class="stage">Postpartum</span>
         </div>
-        <div class="care-plan"><strong>Care plan &amp; history:</strong> Low-risk term pregnancy, GBS-positive — Group B strep prophylaxis ordered. Epidural requested at 4&nbsp;cm dilation. Prior delivery 2022, uncomplicated.</div>
+        <div class="care-plan"><strong>Care plan &amp; history:</strong> Low-risk term pregnancy, GBS-positive, Group B strep prophylaxis ordered. Epidural requested at 4&nbsp;cm dilation. Prior delivery 2022, uncomplicated.</div>
         <div class="order-chips">
           <span class="chip">Order set: Active Labor</span>
           <span class="chip warn">Risk: GBS+</span>
@@ -1182,12 +1182,12 @@
       <div class="chart standard">
         <div class="chart-head">
           <div><strong>Jane Doe</strong> · 32F · MRN 558203</div>
-          <span class="chart-tag denied">Standard chart — no pathway access</span>
+          <span class="chart-tag denied">Standard chart, no pathway access</span>
         </div>
         <ul class="vitals">
           <li>BP 122/78</li><li>HR 84</li><li>Temp 98.6°F</li><li>SpO₂ 99%</li>
         </ul>
-        <div class="locked-note">🔒 <strong>${ctx.name}</strong> is in the <strong>${ctx.department}</strong> department, which isn't granted the Maternity Care Pathway — so the care plan, stage tracker, and order sets are hidden. They see only the standard chart.</div>
+        <div class="locked-note">🔒 <strong>${ctx.name}</strong> is in the <strong>${ctx.department}</strong> department, which isn't granted the Maternity Care Pathway, so the care plan, stage tracker, and order sets are hidden. They see only the standard chart.</div>
       </div>`;
   }
 
@@ -1215,7 +1215,7 @@
             threshold from <code>${data.flag}</code> · read by the Java SDK just now
           </div>
         </div>
-        <p style="font-size:.8rem;color:var(--muted);margin:.75rem 0 0">Change <strong>${data.flag}</strong> in LaunchDarkly and check the same reading again — the alert behaviour updates instantly, no deploy.</p>`;
+        <p style="font-size:.8rem;color:var(--muted);margin:.75rem 0 0">Change <strong>${data.flag}</strong> in LaunchDarkly and check the same reading again. The alert behaviour updates instantly, no deploy.</p>`;
     } catch(e) {
       out.innerHTML = `<p style="color:var(--danger)">Error: ${e.message}. Is the Java service running on port 8002?</p>`;
     } finally {

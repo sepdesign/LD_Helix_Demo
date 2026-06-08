@@ -381,9 +381,9 @@ es.onmessage = (event) => {
 
 ### Step 8: Automate Rollback (turn a flag off from code)
 
-Once a flag is wired in, you can flip it without a deployment — manually in the dashboard, or programmatically so a monitor can roll back for you.
+Once a flag is wired in, you can flip it without a deployment, manually in the dashboard, or programmatically so a monitor can roll back for you.
 
-**Option A — REST API (token-based, used in this demo).** Turn the flag off with a semantic-patch call. The token is an API access token (**Account settings → Authorization → Access tokens**) with write access to the Test environment, kept in `LD_API_TOKEN`:
+**Option A: REST API (token-based, used in this demo).** Turn the flag off with a semantic-patch call. The token is an API access token (**Account settings → Authorization → Access tokens**) with write access to the Test environment, kept in `LD_API_TOKEN`:
 
 ```bash
 curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" \
@@ -394,7 +394,7 @@ curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scri
 
 Swap `turnFlagOff` → `turnFlagOn` to release it again. The project key is `default` unless you created a custom project.
 
-**Option B — Flag trigger (no token).** A trigger gives an external system its own webhook URL that turns the flag off, with no API token required. In the dashboard: open `helix-auto-scribe` → **Settings** → **Triggers** → **Add trigger** → **Generic trigger** → **Turn flag off**. LaunchDarkly generates one complete, unguessable URL and shows it only once — copy the whole thing and POST to it from your monitoring system. (You don't construct this URL by appending a token to a base path; LD issues the entire URL.)
+**Option B: Flag trigger (no token).** A trigger gives an external system its own webhook URL that turns the flag off, with no API token required. In the dashboard: open `helix-auto-scribe` → **Settings** → **Triggers** → **Add trigger** → **Generic trigger** → **Turn flag off**. LaunchDarkly generates one complete, unguessable URL and shows it only once. Copy the whole thing and POST to it from your monitoring system. (You don't construct this URL by appending a token to a base path; LD issues the entire URL.)
 
 **In production:** wire either approach into PagerDuty, Datadog, or any alerting system. When an error-rate threshold is breached, the monitor flips the flag automatically with no human in the loop.
 
@@ -463,7 +463,7 @@ Future rollout stages (opening to more departments, more roles, all hospitals) a
 
 ### Step 11: Configuration as a Flag (Java)
 
-Flags aren't only on/off switches — they can carry a value your code reads at runtime. Here a developer has built a blood-pressure alert, but the threshold it fires at is a LaunchDarkly **Number** flag (`helix-bp-alert-threshold`) that the clinical team owns. The alert logic stays in code; the parameter moves to the dashboard.
+Flags aren't only on/off switches. They can carry a value your code reads at runtime. Here a developer has built a blood-pressure alert, but the threshold it fires at is a LaunchDarkly **Number** flag (`helix-bp-alert-threshold`) that the clinical team owns. The alert logic stays in code; the parameter moves to the dashboard.
 
 ```java
 import com.launchdarkly.sdk.LDContext;
@@ -477,7 +477,7 @@ int threshold = ldClient.intVariation("helix-bp-alert-threshold", ctx, 140);
 boolean alert = reading >= threshold;   // the alert logic lives in code
 ```
 
-Change `helix-bp-alert-threshold` in the dashboard and call this again — the new threshold is used instantly, with no redeploy. The clinical team can re-tune a clinical parameter as guidelines evolve without ever filing an engineering ticket. Beyond Number flags, the same idea works with String and JSON flags to drive richer configuration.
+Change `helix-bp-alert-threshold` in the dashboard and call this again. The new threshold is used instantly, with no redeploy. The clinical team can re-tune a clinical parameter as guidelines evolve without ever filing an engineering ticket. Beyond Number flags, the same idea works with String and JSON flags to drive richer configuration.
 
 ---
 

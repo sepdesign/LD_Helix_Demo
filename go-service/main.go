@@ -3,14 +3,14 @@
 // Part 2 of the demo: the helix-maternity-pathway flag, evaluated per clinician.
 //
 // The story: Helix is rolling out a new "Maternity Care Pathway" module. A single
-// targeting rule decides who sees it — "department is maternity" → on, everyone
+// targeting rule decides who sees it: "department is maternity" → on, everyone
 // else off. The browser asks this service to evaluate the flag for a given
 // clinician, then renders either the Pathway module or the plain standard chart
 // based on the answer.
 //
 // What this file shows off:
 //   • Building an ldcontext from a clinician's attributes (department, role)
-//   • BoolVariationDetail — returns BOTH the true/false value AND the reason
+//   • BoolVariationDetail returns BOTH the true/false value AND the reason
 //     (RULE_MATCH, FALLTHROUGH, ...), so the UI can explain *why* a clinician
 //     got the result they did
 //   • A flag-change listener that logs to stdout the instant the flag changes
@@ -70,7 +70,7 @@ func cors(next http.HandlerFunc) http.HandlerFunc {
 //   role        string: "attending" | "charge_nurse" ...    ← carried for display
 //
 // The LaunchDarkly targeting rule for helix-maternity-pathway is deliberately
-// simple — one attribute, one rule:
+// simple, one attribute, one rule:
 //   Rule    : department is one of "maternity"  → true
 //   Default : false
 //

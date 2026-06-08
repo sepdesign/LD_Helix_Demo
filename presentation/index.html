@@ -220,7 +220,7 @@
     </div>
     <div class="card">
       <h4>Patient Safety Team</h4>
-      <p>Tuning clinical alert thresholds — like the blood-pressure cut-off that screens for preeclampsia — from the dashboard, so the care team adjusts them as guidelines change with no engineering ticket.</p>
+      <p>Tuning clinical alert thresholds, like the blood-pressure cut-off that screens for preeclampsia, from the dashboard, so the care team adjusts them as guidelines change with no engineering ticket.</p>
     </div>
   </div>
   <aside class="notes">
@@ -443,7 +443,7 @@ es.onmessage = (e) => {
       <li>Observe: badge shows <span class="badge badge-off">● OFF</span>, and the screen shows the tedious <strong>manual coding workflow</strong> (the status quo)</li>
       <li>Open LaunchDarkly → <strong>helix-auto-scribe</strong> → toggle <strong>ON</strong></li>
       <li>Watch the manual form get replaced by the AI Auto-Scribe panel (<em>no page reload</em>)</li>
-      <li>Leave department on <strong>Emergency Department</strong> — a sample ED transcript is pre-filled</li>
+      <li>Leave department on <strong>Emergency Department</strong>: a sample ED transcript is pre-filled</li>
       <li>Click <strong>Generate Billing Codes</strong></li>
       <li>The model returns: diagnosis, ICD-10 codes, CPT codes, complexity, and coding notes</li>
     </ol>
@@ -465,17 +465,17 @@ es.onmessage = (e) => {
   <div class="part">Part 1: Remediate</div>
   <h2>Something Went Wrong</h2>
   <div class="callout red" style="font-size:0.6em;margin-bottom:12px;">
-    <strong>Incident:</strong> the AI is over-coding routine visits as high-complexity (CPT 99285). Compliance flagged it — every minute of exposure is liability.
+    <strong>Incident:</strong> the AI is over-coding routine visits as high-complexity (CPT 99285). Compliance flagged it. Every minute of exposure is liability.
   </div>
   <div class="callout" style="font-size:0.6em;margin-bottom:10px;">
-    <strong>Option A — Dashboard:</strong> toggle <code>helix-auto-scribe</code> OFF (~10s). &nbsp;·&nbsp; <strong>Option B — REST API:</strong> one semantic-patch call — curl, Postman, or your monitoring tool.
+    <strong>Option A (Dashboard):</strong> toggle <code>helix-auto-scribe</code> OFF (~10s). &nbsp;·&nbsp; <strong>Option B (REST API):</strong> one semantic-patch call: curl, Postman, or your monitoring tool.
   </div>
   <pre style="font-size:0.46em;"><code class="bash">curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" \
   -H "Authorization: $LD_API_TOKEN" \
   -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" \
   -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code></pre>
   <div class="callout green" style="font-size:0.6em;margin-top:12px;">
-    <strong>Result:</strong> flag off, providers back on the manual workflow — no deployment, no rollback PR, no outage. Resolved in seconds. Wire the call into PagerDuty or Datadog for automated rollback on alert.
+    <strong>Result:</strong> flag off, providers back on the manual workflow, no deployment, no rollback PR, no outage. Resolved in seconds. Wire the call into PagerDuty or Datadog for automated rollback on alert.
   </div>
   <aside class="notes">
     But this is healthcare! So let us talk about what happens when it goes wrong. Imagine compliance discovers the AI is over-coding, billing routine visits as high-complexity, and every extra minute it stays live is a growing liability. In the old world this is a fire drill. Here I have two easy options. I can flip the flag off in the dashboard in about ten seconds. The feature is gone in seconds and providers are back on the safe manual workflow. There was no hotfix, no rollback pull request, and no outage window.
@@ -501,7 +501,7 @@ es.onmessage = (e) => {
 <section class="section-bg">
   <div class="part">Part 2</div>
   <h2>Target</h2>
-  <p style="color:var(--muted);font-size:0.68em;">Show the new Maternity Care Pathway to the right clinicians — by one simple rule</p>
+  <p style="color:var(--muted);font-size:0.68em;">Show the new Maternity Care Pathway to the right clinicians, by one simple rule</p>
   <div class="callout" style="margin-top:26px;">
     Flag: <code>helix-maternity-pathway</code> &nbsp;·&nbsp; Type: Boolean + Targeting &nbsp;·&nbsp; SDK: Go
   </div>
@@ -517,7 +517,7 @@ es.onmessage = (e) => {
 <section>
   <div class="part">Part 2: Target</div>
   <h2>The Maternity Care Pathway</h2>
-  <p style="font-size:0.58em;color:var(--muted);">A new clinical module. Same app, two experiences — LaunchDarkly decides which one each clinician gets.</p>
+  <p style="font-size:0.58em;color:var(--muted);">A new clinical module. Same app, two experiences. LaunchDarkly decides which one each clinician gets.</p>
   <div class="cols" style="margin-top:14px;">
     <div class="callout green" style="font-size:0.6em;">
       <strong>✓ Maternity staff see the Pathway</strong><br><br>
@@ -535,7 +535,7 @@ es.onmessage = (e) => {
     </div>
   </div>
   <div class="callout blue" style="margin-top:14px;font-size:0.62em;">
-    The interviewer's question — "what are we actually accessing?" — answered on screen: a real clinical module appears, or it doesn't.
+    The interviewer's question, "what are we actually accessing?", answered on screen: a real clinical module appears, or it doesn't.
   </div>
   <aside class="notes">
     Here's what we're rolling out. For maternity staff the patient chart becomes a real Maternity Care Pathway module: a guided labor-and-delivery workflow with a stage tracker, the care plan and history, and the right order sets. For everyone else, the exact same application shows the plain standard chart they already use, with a small note that the pathway isn't enabled for them. Same code, two completely different experiences, and LaunchDarkly is the thing deciding which one each clinician sees. The best part is you'll watch that chart actually change, live, in the demo.
@@ -555,10 +555,10 @@ es.onmessage = (e) => {
     <tr><td>Default</td><td>everyone else</td><td><span class="badge badge-off">false</span></td></tr>
   </table>
   <div class="callout blue" style="margin-top:18px;font-size:0.62em;">
-    One attribute, one rule — easy to explain, easy to trust. Expanding the rollout is a dashboard edit to this rule: add <code>emergency</code>, pilot a single provider by email, or gate by hospital tier. No code change, no deploy.
+    One attribute, one rule. Easy to explain, easy to trust. Expanding the rollout is a dashboard edit to this rule: add <code>emergency</code>, pilot a single provider by email, or gate by hospital tier. No code change, no deploy.
   </div>
   <div class="callout" style="margin-top:10px;font-size:0.56em;color:var(--muted);">
-    Targeting can get as granular as you want — individual targets, compound rules, percentage rollouts. We start with one rule so the story stays clear.
+    Targeting can get as granular as you want: individual targets, compound rules, percentage rollouts. We start with one rule so the story stays clear.
   </div>
   <aside class="notes">
     And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls through to the original chart. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
@@ -578,7 +578,7 @@ ctx := ldcontext.NewBuilder(userID).
     SetString("department", department).
     SetString("role", role).Build()
 
-// Evaluate the flag — value AND reason
+// Evaluate the flag: value AND reason
 detail, _ := ldClient.BoolVariationDetail(
     "helix-maternity-pathway", ctx, false)
 
@@ -592,7 +592,7 @@ if detail.Value {
         Same one-flag pattern as Part 1, server-side in Go. The context carries <code>department</code> (plus any extra attributes you want along for the ride); LD checks it against the rule and answers for <em>this</em> clinician.
       </div>
       <div class="callout blue" style="margin-top:10px;font-size:0.6em;">
-        <code>BoolVariationDetail</code> also returns the <em>reason</em> — <code>RULE_MATCH</code> / <code>FALLTHROUGH</code> — so you can answer "why did this user see this?" It's shown in the demo's evaluation-detail drawer.
+        <code>BoolVariationDetail</code> also returns the <em>reason</em>, <code>RULE_MATCH</code> / <code>FALLTHROUGH</code>, so you can answer "why did this user see this?" It's shown in the demo's evaluation-detail drawer.
       </div>
     </div>
   </div>
@@ -652,7 +652,7 @@ if detail.Value {
 <section class="section-bg">
   <div class="part">Part 3</div>
   <h2>Alerts</h2>
-  <p style="color:var(--muted);font-size:0.68em;">A flag can carry a value, not just on/off — a clinical alert threshold the care team tunes from the dashboard</p>
+  <p style="color:var(--muted);font-size:0.68em;">A flag can carry a value, not just on/off: a clinical alert threshold the care team tunes from the dashboard</p>
   <div class="callout" style="margin-top:26px;">
     Flag: <code>helix-bp-alert-threshold</code> &nbsp;·&nbsp; Type: Number &nbsp;·&nbsp; SDK: Java
   </div>
@@ -716,7 +716,7 @@ boolean alert = reading >= threshold;
 <section class="section-bg">
   <div class="part">Part 4</div>
   <h2>Parent Connect</h2>
-  <p style="color:var(--muted);font-size:0.68em;">A patient-facing AI assistant — and the flag that turns it on or off</p>
+  <p style="color:var(--muted);font-size:0.68em;">A patient-facing AI assistant, and the flag that turns it on or off</p>
   <div class="callout" style="margin-top:26px;">
     Flags: <code>helix-parent-connect</code> (gate) &nbsp;·&nbsp; <code>helix-clinical-ai</code> (AI Config) &nbsp;·&nbsp; SDK: Python
   </div>
@@ -735,7 +735,7 @@ boolean alert = reading >= threshold;
   <div class="cols-6-4 cols">
     <div>
       <div class="callout blue" style="font-size:0.6em;margin-bottom:12px;">
-        <strong>Scenario:</strong> A first-time parent. 3am. Their 3-week-old has a fever of 100.8°F and won't stop crying — rush to the ER, or wait until morning?
+        <strong>Scenario:</strong> A first-time parent. 3am. Their 3-week-old has a fever of 100.8°F and won't stop crying. Rush to the ER, or wait until morning?
       </div>
       <div class="callout green" style="font-size:0.6em;">
         <strong>HELIX-PARENT</strong> gives warm, evidence-based guidance and says clearly when to call 911. A boolean flag, <code>helix-parent-connect</code>, gates the feature: toggle it off and parents fall back to the 24/7 nurse line.
@@ -915,7 +915,7 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
     </div>
     <div class="cap">
       <span class="icon">🎯</span>
-      <div class="text"><strong>Targeted access</strong><span>One rule controls who can see the Maternity Care Pathway — and the chart actually changes per clinician. Grant or revoke access from the dashboard, zero code.</span></div>
+      <div class="text"><strong>Targeted access</strong><span>One rule controls who can see the Maternity Care Pathway, and the chart actually changes per clinician. Grant or revoke access from the dashboard, zero code.</span></div>
     </div>
     <div class="cap">
       <span class="icon">🎚️</span>
@@ -927,7 +927,7 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
     </div>
   </div>
   <aside class="notes">
-    So let's step back and look at everything Helix walked away with. They can deploy any time and release only when they're confident. They can roll back in seconds — a toggle or a single API call, and every user is back on the old experience instantly. They can control who sees sensitive information right down to the department, and change that from the dashboard. They can let the clinical team tune real behaviour, like an alert threshold, without an engineering ticket. And they can iterate on their AI, both the models and the prompts, at dashboard speed. Each of those is valuable on its own; together they change how this entire organization ships software, in an environment where the stakes are about as high as they get.
+    So let's step back and look at everything Helix walked away with. They can deploy any time and release only when they're confident. They can roll back in seconds (a toggle or a single API call), and every user is back on the old experience instantly. They can control who sees sensitive information right down to the department, and change that from the dashboard. They can let the clinical team tune real behaviour, like an alert threshold, without an engineering ticket. And they can iterate on their AI, both the models and the prompts, at dashboard speed. Each of those is valuable on its own; together they change how this entire organization ships software, in an environment where the stakes are about as high as they get.
   </aside>
 </section>
 

@@ -59,6 +59,20 @@
     .flag-status.off .dot { background: var(--danger); }
     .flag-status.num .dot { background: #38bdf8; }
 
+    /* Per-service backend health lights in the header (green = up, red = down) */
+    .backend-status {
+      display: inline-flex; align-items: center; gap: .75rem;
+      background: rgba(255,255,255,.15); border-radius: 999px;
+      padding: .25rem .85rem; font-size: .74rem; font-weight: 600; color: #fff; white-space: nowrap;
+    }
+    .backend-status .svc { display: inline-flex; align-items: center; gap: .35rem; }
+    .backend-status .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #fbbf24; transition: background .3s;   /* amber until first check */
+    }
+    .backend-status .svc.ok   .dot { background: var(--ok); }
+    .backend-status .svc.down .dot { background: var(--danger); }
+
     /* ------------------------------------------------------------------ */
     /* Layout                                                               */
     /* ------------------------------------------------------------------ */
@@ -326,6 +340,17 @@
     }
     details.driver .copy-btn:hover { background: var(--accent); color: #fff; }
     details.driver .copy-btn.copied { background: var(--ok); color: #fff; }
+
+    /* "REST commands" — reuses the driver styling (these <details> also carry the
+       class "driver"), but secondary-colored and collapsed by default, so curl /
+       Postman stays out of the way and the visible steps stay UI-first. */
+    details.rest-commands {
+      border-left-color: #475569; background: #0c1726;
+      margin-top: -.4rem; padding: .7rem 1.15rem;
+    }
+    details.rest-commands > summary { color: #cbd5e1; font-size: .82rem; }
+    details.rest-commands > summary::before { color: #64748b; }
+    details.rest-commands > p { font-size: .8rem; line-height: 1.6; color: #94a3b8; margin: .6rem 0 .2rem; }
   </style>
 </head>
 <body>
@@ -334,6 +359,11 @@
   <h1>⚕ Helix Health Group: Clinical Platform</h1>
   <div style="display:flex;align-items:center;gap:1rem">
     <span>LaunchDarkly SE Demo</span>
+    <div id="backend-status" class="backend-status" title="Backend services · if any is red, run ./run.sh">
+      <span class="svc" id="svc-python"><span class="dot"></span>Python</span>
+      <span class="svc" id="svc-go"><span class="dot"></span>Go</span>
+      <span class="svc" id="svc-java"><span class="dot"></span>Java</span>
+    </div>
   </div>
 </header>
 
@@ -364,15 +394,23 @@
         <summary>🎬 Demo driver — flip the switch (Part 1)</summary>
         <ol>
           <li><strong>Start state:</strong> the badge reads <strong>Auto-Scribe: OFF</strong>, and below you see the tedious <strong>manual coding workflow</strong> — hand-picking every ICD-10 and CPT code is the status quo this feature replaces.</li>
-          <li><strong>Release (turn ON):</strong> flip <span class="ld-path">Flags → helix-auto-scribe</span> ON in the dashboard, or run this REST call (curl / Postman) — the manual form is replaced by the AI Auto-Scribe panel instantly over SSE, no reload:
+          <li><strong>Release (turn ON):</strong> flip <span class="ld-path">Flags → helix-auto-scribe</span> <strong>ON</strong> in the dashboard — the manual form is replaced by the AI Auto-Scribe panel instantly over SSE, no reload.</li>
+          <li><strong>Prove it:</strong> click <strong>Generate Billing Codes</strong> — the codes the provider was hunting for by hand now appear in seconds.</li>
+          <li><strong>Remediate (turn OFF):</strong> flip the same flag back <strong>OFF</strong> — the panel vanishes instantly, no redeploy.</li>
+        </ol>
+      </details>
+      <details class="driver rest-commands">
+        <summary>⌨ REST commands (optional — the dashboard toggle does the same)</summary>
+        <p>Prefer curl or Postman? The same release / remediate runs through the LaunchDarkly REST API:</p>
+        <ol>
+          <li><strong>One-time setup:</strong> create an API access token at <span class="ld-path">Account settings → Authorization → Access tokens</span> (write access to the Test environment) and use it as the <code>Authorization</code> header value. For curl, export it as <code>LD_API_TOKEN</code> (bash: <code>export LD_API_TOKEN=api-…</code> · PowerShell: <code>$env:LD_API_TOKEN="api-…"</code>). The project key is <code>default</code> unless you created a custom project.</li>
+          <li><strong>Release (turn ON):</strong>
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOn"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
-          <li><strong>Prove it:</strong> click <strong>Generate Billing Codes</strong> — the codes the provider was hunting for by hand now appear in seconds.</li>
-          <li><strong>Remediate (turn OFF):</strong> the same call with <code>turnFlagOff</code> — the panel vanishes instantly, no redeploy:
+          <li><strong>Remediate (turn OFF):</strong> the same call with <code>turnFlagOff</code>:
             <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
           <li><strong>Run it in Postman:</strong> method <code>PATCH</code>, URL as above. Headers: <code>Authorization: &lt;your-token&gt;</code> (no "Bearer") and <code>Content-Type: application/json; domain-model=launchdarkly.semanticpatch</code>. Body → raw JSON: <code>{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}</code> (use <code>turnFlagOn</code> to release). In Postman, edit the auto-added Content-Type so it keeps the <code>; domain-model=…</code> suffix, or LD returns 400.</li>
-          <li><strong>One-time setup:</strong> create an API access token at <span class="ld-path">Account settings → Authorization → Access tokens</span> (write access to the Test environment) and use it as the <code>Authorization</code> header value. For curl, export it as <code>LD_API_TOKEN</code> (bash: <code>export LD_API_TOKEN=api-…</code> · PowerShell: <code>$env:LD_API_TOKEN="api-…"</code>). The project key is <code>default</code> unless you created a custom project.</li>
         </ol>
       </details>
       <div class="card">
@@ -541,19 +579,14 @@
       <div class="card" style="border-left: 4px solid var(--danger)">
         <h2 style="color:var(--danger)">⚡ Remediate: Instant Flag-Off</h2>
         <p>
-          Simulate a billing audit catching an overcoding issue.  Turn the flag OFF
-          straight from the command line via the LaunchDarkly REST API, the flag
-          flips system-wide in under 200ms, no deployment needed.
+          Simulate a billing audit catching an overcoding issue: turn <strong>helix-auto-scribe</strong>
+          <strong>OFF</strong> in LaunchDarkly and it flips system-wide in under 200&nbsp;ms — no deployment,
+          no incident bridge. The flag turns off → SSE fires → this UI updates instantly.
         </p>
-        <code style="display:block;background:#1a2333;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.8rem;margin:.75rem 0;white-space:pre-wrap;word-break:break-all">
-          curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-auto-scribe" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'
-        </code>
-        <p>The flag turns off → SSE fires → this UI updates → no redeploy, no incident bridge.</p>
-        <p style="font-size:.8rem">
-          <strong>Token:</strong> create an API access token under <em>Account settings → Authorization → Access tokens</em>
-          (write access to the Test environment) and set it as <code>LD_API_TOKEN</code> in your shell.
-          Prefer a no-token webhook your monitoring system can call directly? LaunchDarkly flag
-          <em>triggers</em> generate one for exactly that, an alternative to this REST call.
+        <p style="font-size:.8rem;color:var(--muted)">
+          Prefer curl, Postman, or a monitoring webhook over the dashboard toggle? The REST version and
+          token setup are in the <strong>⌨ REST commands</strong> box at the top of this panel — and
+          LaunchDarkly flag <em>triggers</em> can generate a no-token webhook for exactly this.
         </p>
       </div>
     </div>
@@ -571,8 +604,17 @@
           <li><strong>See who has access:</strong> click <strong>Dr. Alvarez (Maternity)</strong> → her chart shows the full pathway (care plan, stages, order sets). Click <strong>Dr. Reed (Emergency)</strong> → he sees only the standard chart; that information is hidden from him.</li>
           <li><strong>Grant access live:</strong> follow the <em>"Change who has access"</em> card at the bottom — add the ER to the rule in LD, then re-click Dr. Reed and he sees the very same information. No redeploy.</li>
           <li><strong>Under the hood:</strong> the Go SDK evaluates per user. Expand <em>"LaunchDarkly evaluation detail"</em> under the chart for the reason (<code>RULE_MATCH</code> / <code>FALLTHROUGH</code>) and the exact context sent.</li>
-          <li><strong>Hit the Go SDK directly (optional):</strong>
-            <div class="cmd"><code>curl "http://localhost:8001/feature?userId=dr.alvarez@helixhealth.org&amp;department=maternity&amp;role=attending"</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        </ol>
+      </details>
+      <details class="driver rest-commands">
+        <summary>⌨ REST commands (optional — the dashboard does the same)</summary>
+        <p>Grant the ER access through the LaunchDarkly REST API instead of editing the rule by hand (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <ol>
+          <li><strong>Grant access</strong> — add Emergency to the maternity rule:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-maternity-pathway" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"addValuesToClause","ruleId":"94519ad8-6d12-4e0c-b04c-9d32c4295334","clauseId":"65217d87-1072-44b2-9589-91f776028e4e","values":["emergency"]}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Revert</strong> — remove Emergency again:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-maternity-pathway" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"removeValuesFromClause","ruleId":"94519ad8-6d12-4e0c-b04c-9d32c4295334","clauseId":"65217d87-1072-44b2-9589-91f776028e4e","values":["emergency"]}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
       </details>
@@ -647,8 +689,17 @@
           <li><strong>Check a reading:</strong> enter a systolic blood pressure and click <strong>Check reading</strong>. The Java service compares it against the alert threshold it reads from LaunchDarkly. The default 135 is below the 140 threshold, so it comes back NORMAL.</li>
           <li><strong>The wow:</strong> in LD, lower <span class="ld-path">helix-bp-alert-threshold</span> from 140 to 130, then check the same 135 reading again → it flips from <strong>NORMAL</strong> to <strong>🚨 ALERT</strong>. No deploy, no restart; the Java SDK read the new threshold live.</li>
           <li>The alert <em>logic</em> lives in code; the <em>threshold</em> is a <strong>Number</strong> flag the clinical team owns — so a flag here carries configuration, not just on/off.</li>
-          <li><strong>Hit the Java SDK directly (optional):</strong>
-            <div class="cmd"><code>curl "http://localhost:8002/lab-check?value=135"</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        </ol>
+      </details>
+      <details class="driver rest-commands">
+        <summary>⌨ REST commands (optional — the dashboard does the same)</summary>
+        <p>Change the alert threshold through the LaunchDarkly REST API — this Number flag serves <strong>140 when ON</strong> and <strong>130 when OFF</strong> (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <ol>
+          <li><strong>Lower to 130</strong> (turn OFF) — a 135 reading now ALERTs:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-bp-alert-threshold" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Back to 140</strong> (turn ON) — 135 is NORMAL again:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-bp-alert-threshold" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOn"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
       </details>
@@ -684,10 +735,20 @@
           <li><strong>ED persona:</strong> select <strong>ED</strong> below and click <strong>Generate Codes via AI Config</strong> → served by HELIX-SCRIBE-ED (Haiku).</li>
           <li><strong>OB persona:</strong> select <strong>OB</strong> and generate again → served by HELIX-SCRIBE-OB (Sonnet). Same flag, different model — zero code change.</li>
           <li><strong>Live switch:</strong> in LaunchDarkly open <span class="ld-path">AI Configs → helix-clinical-ai</span>, change a variation's model or instructions, then <strong>Save</strong>. Click Generate again — the next call uses the new config instantly.</li>
-          <li><strong>Hit the AI Config SDK directly (optional):</strong>
-            <div class="cmd"><code>curl -X POST http://localhost:8000/code-encounter -H "Content-Type: application/json" -d '{"transcript":"rib fractures 4-7, small left pneumothorax, chest tube placed","department":"ed","userId":"demo"}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        </ol>
+      </details>
+      <details class="driver rest-commands">
+        <summary>⌨ REST commands (optional — beta AI Configs API)</summary>
+        <p>Each persona's model + prompt lives in the <strong>helix-clinical-ai</strong> AI Config. Read or swap them through the LaunchDarkly <strong>AI Configs</strong> REST API — note the <code>LD-API-Version: beta</code> header (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <ol>
+          <li><strong>Read the live config</strong> — every variation and its model:
+            <div class="cmd"><code>curl "https://app.launchdarkly.com/api/v2/projects/default/ai-configs/helix-clinical-ai" -H "Authorization: $LD_API_TOKEN" -H "LD-API-Version: beta"</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Swap the ED persona's model</strong> (Haiku → Sonnet) — updates the <code>helix-scribe-ed</code> variation; the next Generate call uses it:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/projects/default/ai-configs/helix-clinical-ai/variations/helix-scribe-ed" -H "Authorization: $LD_API_TOKEN" -H "LD-API-Version: beta" -H "Content-Type: application/json" -d '{"name":"HELIX-SCRIBE-ED","modelConfigKey":"Anthropic.claude-sonnet-4-5","messages":[{"role":"system","content":"You are HELIX-SCRIBE-ED, a clinical coding assistant for emergency medicine. Extract ICD-10 and CPT codes from the encounter transcript. Return valid JSON only. No markdown."}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
+        <p style="margin-top:.45rem">AI Configs are a <strong>beta</strong> API: the PATCH replaces the variation (model + messages), so include the messages you want to keep. The read call is the safe one to demo.</p>
       </details>
       <div class="card">
         <span class="badge badge-part">Extra Credit</span>
@@ -764,8 +825,17 @@
           <li><strong>Escalation:</strong> click <strong>Sample: Breathing</strong>, then <strong>Send</strong> → the red 🚨 emergency banner appears (escalation heuristic on the response).</li>
           <li><strong>Live prompt update:</strong> edit the HELIX-PARENT variation in <span class="ld-path">AI Configs → helix-clinical-ai</span>, <strong>Save</strong>, and send again — new guidance, no deploy.</li>
           <li><strong>Graceful fallback (feature flag):</strong> toggle <span class="ld-path">helix-parent-connect</span> <strong>off</strong> in LD, then send a message → the UI falls back to the 24/7 nurse-line message. Toggle it back on to restore the AI. (Prompt editing in step 3 is the AI Config; this on/off is a plain boolean flag.)</li>
-          <li><strong>Hit the SDK directly (optional):</strong>
-            <div class="cmd"><code>curl -X POST http://localhost:8000/parent-connect -H "Content-Type: application/json" -d '{"message":"my 3-week-old has had a fever of 100.8 for 2 hours","userId":"parent-demo"}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        </ol>
+      </details>
+      <details class="driver rest-commands">
+        <summary>⌨ REST commands (optional — the dashboard does the same)</summary>
+        <p>Flip the Parent Connect feature flag through the LaunchDarkly REST API (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <ol>
+          <li><strong>Graceful fallback</strong> (turn OFF) — replies fall back to the 24/7 nurse line:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-parent-connect" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Restore the AI</strong> (turn ON):
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-parent-connect" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOn"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
           </li>
         </ol>
       </details>
@@ -914,15 +984,48 @@
     if (typeof autoGrow === 'function') shown.querySelectorAll('textarea').forEach(autoGrow);
   }
 
+  // Header health lights: one per backend service (Python 8000, Go 8001, Java 8002).
+  // Green = up, red = down. Python is updated instantly by the SSE stream below;
+  // all three are also polled every few seconds via their /health endpoints, so a
+  // dead service is obvious and you know to re-run ./run.sh.
+  function setSvc(id, ok) {
+    const el = document.getElementById(id);
+    if (el) el.className = 'svc ' + (ok ? 'ok' : 'down');
+  }
+  const HEALTH_CHECKS = [
+    { id: 'svc-python', url: PYTHON_URL },
+    { id: 'svc-go',     url: GO_URL },
+    { id: 'svc-java',   url: JAVA_URL },
+  ];
+  async function checkServices() {
+    await Promise.all(HEALTH_CHECKS.map(async svc => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 2500);
+      try {
+        const r = await fetch(`${svc.url}/health`, { signal: ctrl.signal });
+        setSvc(svc.id, r.ok);
+      } catch {
+        setSvc(svc.id, false);
+      } finally {
+        clearTimeout(t);
+      }
+    }));
+  }
+  checkServices();
+  setInterval(checkServices, 5000);
+
   const evtSource = new EventSource(`${PYTHON_URL}/events`);
+  evtSource.onopen = () => setSvc('svc-python', true);
   evtSource.onmessage = e => {
+    setSvc('svc-python', true);
     const data = JSON.parse(e.data);
     updateFlagBadge(data.flag, data.value);
     if (data.flag === 'helix-auto-scribe') applyFlagState(data.value);
   };
   evtSource.onerror = () => {
+    setSvc('svc-python', false);   // SSE dropped; the 5s poll + EventSource retry flip it back when the service returns
     document.getElementById('sse-indicator').innerHTML =
-      '<span style="color:var(--danger)">⚠ SSE disconnected. Is the Python service running?</span>';
+      '<span style="color:var(--danger)">⚠ SSE disconnected — run ./run.sh to restart the backend.</span>';
   };
 
   // -----------------------------------------------------------------------

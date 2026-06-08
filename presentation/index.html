@@ -252,7 +252,7 @@
     </div>
   </div>
   <aside class="notes">
-    Here's the tension every one of these teams feels. Leadership wants features out the door faster, but remember, these are hospitals, and lives are genuinely on the line, so quality simply cannot slip. In the old world, deploying code and releasing a feature were the same single act, which means a bug in production turns into a frantic hotfix, a rollback pull request, and an outage window, and at forty thousand encounters a day every minute of that is enormously expensive. LaunchDarkly's whole premise is to break the link between deploying and releasing, and that is what the rest of this story is really about.
+    Here's the tension every one of these teams feels. Leadership wants features out the door faster. But remember! These are hospitals and lives are genuinely on the line so quality simply cannot slip. In the old world, deploying code and releasing a feature were the same single act, which means a bug in production turns into a frantic hotfix, a rollback pull request, and an outage window. At forty thousand encounters a day every minute of that is enormously expensive. LaunchDarkly's whole premise is to break the link between deploying and releasing, and that is what this story is really about.
   </aside>
 </section>
 
@@ -327,7 +327,7 @@
     </div>
   </div>
   <aside class="notes">
-    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project: a Python service that owns Part 1 and the AI Config work and streams flag changes out to the browser, a Go service that handles the Part 2 targeting, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags drive all of them, identically.
+    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project. A Python service that owns Part 1, a Go service that handles the Part 2, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags can be utilized with many different development groups.
   </aside>
 </section>
 
@@ -343,7 +343,7 @@
     Flag: <code>helix-auto-scribe</code> &nbsp;·&nbsp; Type: Boolean &nbsp;·&nbsp; SDK: Python
   </div>
   <aside class="notes">
-    Let's start with the Clinical AI team and their highest-stakes feature. They want to ship an AI auto-scribe that turns a doctor's encounter notes into billing codes automatically. It's enormously useful, but it touches claims revenue directly, so it's exactly the kind of feature you want to release carefully and be able to pull back the instant anything looks wrong. The flag is called helix-auto-scribe, it's a simple on-off boolean, and it's evaluated by the Python service.
+    Let's start with the Clinical AI team and their highest-stakes feature. They want to ship an AI auto-scribe that turns a doctor's encounter notes into billing codes automatically. It's enormously useful! But it touches claims revenue directly, so it's exactly the kind of feature you want to release carefully and be able to pull back the instant anything looks wrong. The flag is called helix-auto-scribe, it's a simple on-off boolean, and it's evaluated by the Python service.
   </aside>
 </section>
 
@@ -384,7 +384,7 @@ else:
     </div>
   </div>
   <aside class="notes">
-    Here's the before and after. Today a provider spends twenty-plus minutes per encounter picking ICD-10 and CPT codes by hand, and every mistake becomes a denied claim. With auto-scribe, the transcript goes in and the model returns the codes in seconds, with the provider reviewing them instead of coding from scratch. The part that matters most for our story is on the right: the entire feature is wrapped in a single flag check. The code is already deployed to production right now; it's just that the flag is off, so every provider still sees the old manual form. Nobody even knows the new feature is there yet.
+    Here's the before and after. Today a provider spends twenty-plus minutes per encounter picking ICD-10 and CPT codes by hand, and every mistake becomes a denied claim. With Auto-Scribe the transcript goes in and the model returns the codes in seconds. With the provider reviewing the results instead of coding from scratch time spent on this task is dramatically reduced. The part that matters most for our story is on the right: the entire feature is wrapped in a single flag check. The code is already deployed to production right now. Currently the flag is off, so every provider still sees the old manual form. Nobody even knows the new feature is there yet.
   </aside>
 </section>
 
@@ -427,7 +427,7 @@ es.onmessage = (e) => {
     </div>
   </div>
   <aside class="notes">
-    Now, how does the feature appear the very moment we flip the flag, without anyone refreshing their browser? On the server side, the LaunchDarkly SDK holds a streaming connection open to LaunchDarkly and fires a callback within milliseconds of any change. We catch that callback and push it straight out to the browser over Server-Sent Events. The browser is already listening on that stream, so when the value flips, the panel simply appears or disappears on its own. No polling, no reload, under a second from end to end.
+    Now, how does the feature appear the very moment we flip the flag without anyone refreshing their browser? On the server side the LaunchDarkly SDK holds a streaming connection open to LaunchDarkly and fires a callback within milliseconds of any change. We catch that callback and push it straight out to the browser over Server-Sent Events (SSE). The browser is already listening on that stream, so when the value flips, the panel simply appears or disappears on its own. No polling, no reload, under a second from end to end.
   </aside>
 </section>
 
@@ -453,7 +453,7 @@ es.onmessage = (e) => {
     No deployment was required. No service restart. No configuration push.
   </div>
   <aside class="notes">
-    Let's actually do it. Right now the badge in the corner reads OFF. I'll go into LaunchDarkly, find helix-auto-scribe, and toggle it on, and watch, the panel appears here on its own with no refresh. From there I'll leave it on the Emergency Department, where a sample encounter is already filled in, and click Generate Billing Codes; the model returns the diagnosis, the ICD-10 and CPT codes, and a short rationale in a couple of seconds. If you want, I can switch the department to Obstetrics and load that sample to preview the AI Config piece we'll get to shortly. And just like that, all six thousand providers can use AI-assisted coding, with no deployment, no restart, and nothing pushed.
+    Let's actually do it. Right now the badge in the corner reads OFF. I'll go into LaunchDarkly, find helix-auto-scribe, and toggle it on. Watch as the panel appears here on its own with no refresh. From there I'll leave it on the Emergency Department, where a sample encounter is already filled in, and click Generate Billing Codes; the model returns the diagnosis, the ICD-10 and CPT codes, and a short rationale in a couple of seconds. And just like that, all six thousand providers can use AI-assisted coding, with no deployment, no restart, and code pushs.
   </aside>
 </section>
 
@@ -478,7 +478,7 @@ es.onmessage = (e) => {
     <strong>Result:</strong> flag off, providers back on the manual workflow — no deployment, no rollback PR, no outage. Resolved in seconds. Wire the call into PagerDuty or Datadog for automated rollback on alert.
   </div>
   <aside class="notes">
-    But this is healthcare, so let's talk about what happens when it goes wrong. Imagine compliance discovers the AI is over-coding, billing routine visits as high-complexity, and every extra minute it stays live is a growing liability. In the old world this is a fire drill. Here I have two easy options. I can flip the flag off in the dashboard in about ten seconds, or I can do it from a script, one REST call from curl, from Postman, or even straight from a monitoring tool like Datadog or PagerDuty, so the rollback happens automatically the instant an alert fires. Either way the feature is gone in seconds, providers are back on the safe manual workflow, and there was no hotfix, no rollback pull request, and no outage window.
+    But this is healthcare! So let us talk about what happens when it goes wrong. Imagine compliance discovers the AI is over-coding, billing routine visits as high-complexity, and every extra minute it stays live is a growing liability. In the old world this is a fire drill. Here I have two easy options. I can flip the flag off in the dashboard in about ten seconds. The feature is gone in seconds and providers are back on the safe manual workflow. There was no hotfix, no rollback pull request, and no outage window.
   </aside>
 </section>
 
@@ -506,7 +506,7 @@ es.onmessage = (e) => {
     Flag: <code>helix-maternity-pathway</code> &nbsp;·&nbsp; Type: Boolean + Targeting &nbsp;·&nbsp; SDK: Go
   </div>
   <aside class="notes">
-    Part 1 was about whether a feature is on. Part 2 is about who gets to see it. So let's switch over to the Patient Access team, who are rolling out a brand-new Maternity Care Pathway. They don't want to flip it on for all forty thousand encounters at once; they want the right clinicians to get it first. The flag is helix-maternity-pathway, and this time it's evaluated by the Go service.
+    Part 1 was about whether a feature is on. Part 2 is about who gets to see it. So let's switch over to the Patient Access team who are rolling out a brand-new Maternity Care Pathway. They don't want to flip it on for all forty thousand encounters at once; they want the right clinicians to get it first. The flag is helix-maternity-pathway. This time it's evaluated by the Go service.
   </aside>
 </section>
 
@@ -538,7 +538,7 @@ es.onmessage = (e) => {
     The interviewer's question — "what are we actually accessing?" — answered on screen: a real clinical module appears, or it doesn't.
   </div>
   <aside class="notes">
-    Here's what we're actually rolling out, because the fair question is always "okay, but what does the user get?" For maternity staff, the patient chart becomes a real Maternity Care Pathway module: a guided labor-and-delivery workflow with a stage tracker, the care plan and history, and the right order sets. For everyone else, the exact same application shows the plain standard chart they already use, with a small note that the pathway isn't enabled for them. Same code, two completely different experiences, and LaunchDarkly is the thing deciding which one each clinician sees. The best part is you'll watch that chart actually change, live, in the demo.
+    Here's what we're rolling out. For maternity staff the patient chart becomes a real Maternity Care Pathway module: a guided labor-and-delivery workflow with a stage tracker, the care plan and history, and the right order sets. For everyone else, the exact same application shows the plain standard chart they already use, with a small note that the pathway isn't enabled for them. Same code, two completely different experiences, and LaunchDarkly is the thing deciding which one each clinician sees. The best part is you'll watch that chart actually change, live, in the demo.
   </aside>
 </section>
 
@@ -561,7 +561,7 @@ es.onmessage = (e) => {
     Targeting can get as granular as you want — individual targets, compound rules, percentage rollouts. We start with one rule so the story stays clear.
   </div>
   <aside class="notes">
-    And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls through to off. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
+    And the rule behind that decision is deliberately boring, which is exactly the point. It's one attribute and one rule: if the clinician's department is maternity, they're in; everyone else falls processes through to the original chart. It's easy to explain and easy to trust. When the team is ready to expand, to the ER, to a single pilot doctor, to only the Level I hospitals, or to a gradual ten-percent ramp, that's a change to this one rule in the dashboard, not an engineering ticket. You start simple and add precision only when the rollout actually calls for it.
   </aside>
 </section>
 
@@ -629,7 +629,7 @@ if detail.Value {
     Click a clinician → the Go service evaluates the flag live → the patient chart re-renders. Two maternity staff (different roles) both get the Pathway; the ER doctor gets the standard chart. Expand <em>evaluation detail</em> for the SDK reason.
   </div>
   <aside class="notes">
-    Let's see it. I'll click Dr. Alvarez, a maternity attending, and the pathway module renders. Then Grace Liu, a maternity charge nurse, and it's the same pathway, because it's the department that matters, not the person or the exact role. Then Dr. Reed over in the Emergency department, and he drops back to the standard chart, because no rule matched him. If you want the proof, I'll expand the evaluation detail and you'll see the real SDK reason for each one. And if I decided Dr. Reed should be included, I'd just edit that one rule in the dashboard and click him again, with no redeploy.
+    Let's see it. I'll click Dr. Alvarez, a maternity attending, and the pathway module renders. Then Grace Liu, a maternity charge nurse, and it's the same pathway, because it's the department that matters, not the person or the exact role. Then Dr. Reed over in the Emergency department, and he drops back to the standard chart, because no rule matched him.
   </aside>
 </section>
 
@@ -693,7 +693,7 @@ boolean alert = reading >= threshold;
     </div>
   </div>
   <aside class="notes">
-    There's one more shape a flag can take that people often miss: it doesn't have to be a simple on or off. For Part 3, a developer built a blood-pressure alert, the kind of thing that screens for preeclampsia, but the threshold it fires at isn't baked into the code. It's a LaunchDarkly Number flag that the clinical team owns. Watch: I enter a reading of 135, and against the default threshold of 140 it comes back normal. Now I lower that threshold in the dashboard to 130, check the very same 135 again, and it flips to an alert, with no deploy and no restart; the Java service simply read the new number. The takeaway is that flags aren't only switches. A number, a string, or even a JSON blob can let the people closest to the problem tune real behaviour safely, without an engineering ticket every single time.
+    There's one more shape a flag can take that people often miss: it doesn't have to be a simple on or off. For Part 3, a developer built a blood-pressure alert, the kind of thing that screens for preeclampsia, but the threshold it fires at isn't baked into the code. It's a LaunchDarkly Number flag that the clinical team owns.
   </aside>
 </section>
 
@@ -705,7 +705,7 @@ boolean alert = reading >= threshold;
   <h2>Now let's see the demo for Part 3!</h2>
   <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Configuration as a flag</p>
   <aside class="notes">
-    Now to the live app for Part 3. I'll enter a blood-pressure reading, then lower the helix-bp-alert-threshold number flag in the dashboard and watch the very same reading flip from normal to an alert, with no redeploy.
+    Now to the live app for Part 3. Watch: I enter a reading of 135, and against the default threshold of 140 it comes back normal. Now I lower that threshold in the dashboard to 130, check the very same 135 again, and it flips to an alert, with no deploy and no restart; the Java service simply read the new number. The takeaway is that flags aren't only switches. A number, a string, or even a JSON blob can let the people closest to the problem tune real behaviour safely, without an engineering ticket every single time.
   </aside>
 </section>
 
@@ -758,7 +758,7 @@ if not ld.variation("helix-parent-connect",
     </div>
   </div>
   <aside class="notes">
-    Let me make that concrete with my favourite example. It's three in the morning, a first-time parent's three-week-old has a fever and won't stop crying, and they honestly don't know whether to rush to the ER or wait until morning. Parent Connect, running that warm persona, gives them calm, evidence-based guidance and tells them clearly when it's time to call 911. If the response sounds like an emergency, we flag it and put the nurse line front and centre. And notice there are two independent LaunchDarkly controls here: the AI Config owns the model and the prompt, so the clinical team can reword the guidance live, while a separate boolean flag, helix-parent-connect, simply gates the whole feature, so flipping it off instantly falls back to the 24/7 nurse line and a frightened parent is never left with nothing.
+    Let me make that concrete with my favourite example. It's three in the morning, a first-time parent's three-week-old has a fever and won't stop crying, and they honestly don't know whether to rush to the ER or wait until morning. Parent Connect, running that warm persona, gives them calm, evidence-based guidance and tells them clearly when it's time to call 911. If the response sounds like an emergency, we flag it and put the nurse line front and centre. And notice there are two independent LaunchDarkly controls here: the AI Config owns the model and the prompt, so the clinical team can reword the guidance live. While a separate boolean flag, helix-parent-connect, simply gates the whole feature. This safeguard works by flipping it off instantly falls back to the 24/7 nurse line and a frightened parent is never left with nothing.
   </aside>
 </section>
 

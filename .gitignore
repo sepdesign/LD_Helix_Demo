@@ -4,6 +4,9 @@
 # Assignment PDF: proprietary, not for public repo
 Candidate_HW_-_SE_2025.pdf
 
+# Working scratchpad: the canonical speaker notes live in presentation/index.html
+speaker_notes.txt
+
 # Python
 __pycache__/
 *.pyc

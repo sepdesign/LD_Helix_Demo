@@ -351,6 +351,15 @@
     details.rest-commands > summary { color: #cbd5e1; font-size: .82rem; }
     details.rest-commands > summary::before { color: #64748b; }
     details.rest-commands > p { font-size: .8rem; line-height: 1.6; color: #94a3b8; margin: .6rem 0 .2rem; }
+
+    /* "Code used to implement": collapsed reference showing the actual SDK
+       code for each part, lifted from the slide deck. */
+    details.code-impl { border-left-color: #475569; background: #0c1726; margin-top: -.4rem; padding: .7rem 1.15rem; }
+    details.code-impl > summary { color: #cbd5e1; font-size: .82rem; }
+    details.code-impl > summary::before { color: #64748b; }
+    details.code-impl > p { font-size: .8rem; line-height: 1.6; color: #94a3b8; margin: .6rem 0 .55rem; }
+    details.code-impl pre { background: #0a1420; border: 1px solid #1e293b; border-radius: 6px; padding: .8rem 1rem; margin: 0; overflow-x: auto; }
+    details.code-impl pre code { font-family: "Cascadia Code", "Fira Code", monospace; font-size: .74rem; line-height: 1.55; color: #cbd5e1; white-space: pre; }
   </style>
 </head>
 <body>
@@ -414,6 +423,22 @@
           <li><strong>Run it in Postman:</strong> method <code>PATCH</code>, URL as above. Headers: <code>Authorization: &lt;your-token&gt;</code> (no "Bearer") and <code>Content-Type: application/json; domain-model=launchdarkly.semanticpatch</code>. Body → raw JSON: <code>{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}</code> (use <code>turnFlagOn</code> to release). In Postman, edit the auto-added Content-Type so it keeps the <code>; domain-model=…</code> suffix, or LD returns 400.</li>
         </ol>
       </details>
+      <details class="driver code-impl">
+        <summary>&#128187; Code used to implement this feature</summary>
+        <p>The entire feature is wrapped in one server-side flag check. Off serves the manual coding form; on serves the AI Auto-Scribe panel.</p>
+        <pre><code># The whole feature is wrapped in one flag check
+context = Context.builder(user_key)\
+    .set("department", department).build()
+
+enabled = ld.bool_variation(
+    "helix-auto-scribe", context, False)  # default off
+
+if enabled:
+    show_ai_scribe_panel()    # new path
+else:
+    show_manual_coding_form() # old path</code></pre>
+      </details>
+
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
@@ -619,6 +644,25 @@
           </li>
         </ol>
       </details>
+      <details class="driver code-impl">
+        <summary>&#128187; Code used to implement this feature</summary>
+        <p>The Go service evaluates the flag with the clinician's context, then renders the pathway module or the standard chart. BoolVariationDetail also returns the reason.</p>
+        <pre><code>// Build a context for this clinician
+ctx := ldcontext.NewBuilder(userID).
+    SetString("department", department).
+    SetString("role", role).Build()
+
+// Evaluate the flag: value AND reason
+detail, _ := ldClient.BoolVariationDetail(
+    "helix-maternity-pathway", ctx, false)
+
+if detail.Value {
+    renderMaternityPathway()  // new module
+} else {
+    renderStandardChart()     // everyone else
+}</code></pre>
+      </details>
+
       <div class="card">
         <span class="badge badge-part">Part 2</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Go SDK</span>
@@ -704,6 +748,21 @@
           </li>
         </ol>
       </details>
+      <details class="driver code-impl">
+        <summary>&#128187; Code used to implement this feature</summary>
+        <p>The alert logic stays in Java; the threshold is a LaunchDarkly Number flag the clinical team re-tunes in the dashboard, with no deploy.</p>
+        <pre><code>// Alert logic is in code; the THRESHOLD
+// is a LaunchDarkly Number flag
+LDContext ctx = LDContext
+    .builder("helix-clinical-platform").build();
+
+int threshold = ldClient.intVariation(
+    "helix-bp-alert-threshold", ctx, 140);
+
+boolean alert = reading &gt;= threshold;
+// clinical team re-tunes it in the dashboard</code></pre>
+      </details>
+
       <div class="card">
         <span class="badge badge-part">Part 3</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Java SDK</span>
@@ -751,6 +810,28 @@
         </ol>
         <p style="margin-top:.45rem">AI Configs are a <strong>beta</strong> API: the PATCH replaces the variation (model + messages), so include the messages you want to keep. The read call is the safe one to demo.</p>
       </details>
+      <details class="driver code-impl">
+        <summary>&#128187; Code used to implement this feature</summary>
+        <p>One call to the LaunchDarkly AI SDK returns the model and system prompt for this context. The app code never changes when you swap them in the dashboard.</p>
+        <pre><code>from ldai.client import LDAIClient, AIConfig
+ai_client = LDAIClient(ld)            # wraps your existing LD client
+
+# The "department" attribute routes to the right AI Config variation
+context = Context.builder(user_key).set("department", "ed").build()
+
+# Model name AND system prompt come from the LaunchDarkly dashboard
+ai_config, tracker = ai_client.config(
+    "helix-clinical-ai", context, AIConfig(enabled=False)
+)
+
+response = anthropic_client.messages.create(
+    model=ai_config.model.name,            # e.g. claude-haiku-4-5
+    system=ai_config.messages[0].content,  # prompt owned in LD
+    messages=[{"role": "user", "content": transcript}],
+)
+tracker.track_success()                    # usage tracked back to LD</code></pre>
+      </details>
+
       <div class="card">
         <span class="badge badge-part">Extra Credit</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
@@ -840,6 +921,24 @@
           </li>
         </ol>
       </details>
+      <details class="driver code-impl">
+        <summary>&#128187; Code used to implement this feature</summary>
+        <p>The Python service gates the AI with a boolean flag. Off falls back to the 24/7 nurse line; a separate AI Config owns the model and prompt.</p>
+        <pre><code># Escalation heuristic: detect an emergency
+escalate = any(w in content.lower() for w in
+    ["911", "emergency room", "go to the ed"])
+
+# Feature flag gates the AI; off = nurse line
+if not ld.variation("helix-parent-connect",
+                    ctx, True):
+    return {
+        "response": "Our AI assistant is off. "
+            "Call the 24/7 nurse line: "
+            "1-800-HELIX-RN.",
+        "escalate": False,
+    }</code></pre>
+      </details>
+
       <div class="card">
         <span class="badge badge-part">Extra Credit: AgentControl</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
@@ -917,6 +1016,28 @@
           <li><strong>The resilience payoff:</strong> click <strong>Simulate LaunchDarkly unavailable</strong>. The client SDK can't reach LaunchDarkly, falls back to its safe default (off), the pill goes <span style="color:var(--danger)">red</span>, and Quick Actions stops working. Click <strong>Reconnect</strong> to restore it.</li>
           <li><strong>What the browser sees:</strong> open DevTools → Network, filter <code>launchdarkly</code>. The browser receives evaluated <em>values</em> for one context, never the ruleset. That is why the client-side ID is safe to expose.</li>
         </ol>
+      </details>
+
+      <details class="driver code-impl">
+        <summary>&#128187; Code used to implement this feature</summary>
+        <p>The browser evaluates the flag itself with the JavaScript client-side SDK, fetching the client-side ID from our service and updating live over the SDK's own stream.</p>
+        <pre><code>// Client-side ID from our own service (keeps it out of git)
+const { clientSideId } =
+    await (await fetch('/client-config')).json();
+const LDClient = await import(
+  'https://cdn.jsdelivr.net/npm/launchdarkly-js-client-sdk@3.9.3/+esm');
+
+// Evaluate the flag in the browser itself
+const ldc = LDClient.initialize(clientSideId, context,
+    { streaming: true, evaluationReasons: true });
+await ldc.waitForInitialization(5);
+
+const det = ldc.variationDetail('helix-quick-actions', false);
+setQuickActionsEnabled(det.value);   // enable/disable palette
+
+// Live updates over the SDK's own stream
+ldc.on('change:helix-quick-actions', v =&gt;
+    setQuickActionsEnabled(v));</code></pre>
       </details>
 
       <div class="card">

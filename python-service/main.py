@@ -399,6 +399,19 @@ def health():
 
 
 # ---------------------------------------------------------------------------
+# GET /client-config
+# The browser's LaunchDarkly JavaScript (client-side) SDK needs the *client-side
+# ID* to initialise. That ID is designed to be public: it is safe to expose to
+# the browser. The server SDK key and the Anthropic key never leave the server.
+# We read the ID from .env so .env stays the single source of truth and the ID
+# stays out of git (do not hardcode or commit it).
+# ---------------------------------------------------------------------------
+@app.get("/client-config")
+def client_config():
+    return {"clientSideId": os.environ["LD_CLIENT_SIDE_ID"]}
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":

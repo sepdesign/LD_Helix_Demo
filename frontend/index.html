@@ -377,7 +377,8 @@
     <button onclick="showPanel('p2', this)">🎯 Part 2: Target</button>
     <button onclick="showPanel('p2j', this)">🩺 Part 3: Alerts</button>
     <button onclick="showPanel('parent', this)">👶 Part 4: Parent Connect</button>
-    <button onclick="showPanel('ai', this)">🤖 Part 5: AI Config</button>
+    <button onclick="showPanel('client', this)">🌐 Part 5: Client-Side SDK</button>
+    <button onclick="showPanel('ai', this)">🤖 Part 6: AI Config</button>
   </nav>
 
   <!-- ------------------------------------------------------------------ */
@@ -596,7 +597,7 @@
     <!-- PANEL 2, Part 2: Targeting (Go service)                         -->
     <!-- ================================================================ -->
     <div id="p2" class="panel">
-      <div class="flag-status off" id="fs-maternity"><span class="dot"></span><span class="lbl">Maternity Pathway: OFF</span></div>
+      <div class="flag-status off" id="fs-maternity"><span class="dot"></span><span class="lbl">Maternity Access: OFF</span></div>
       <details class="driver" open>
         <summary>🎬 Demo driver: targeting (Part 2)</summary>
         <ol>
@@ -753,7 +754,7 @@
       <div class="card">
         <span class="badge badge-part">Extra Credit</span>
         <span class="badge badge-sdk" style="margin-left:.4rem">Python + LD AI SDK</span>
-        <h2 style="margin-top:.5rem">Part 5: AI Config</h2>
+        <h2 style="margin-top:.5rem">Part 6: AI Config</h2>
         <p>
           Three AI personas, one flag, zero code changes.  The <strong>helix-clinical-ai</strong>
           AI Config in LaunchDarkly controls which Claude model and system prompt are
@@ -887,6 +888,73 @@
       </div>
     </div>
 
+    <!-- ================================================================ -->
+    <!-- PANEL CLIENT, Part 5: Client-Side (JavaScript) SDK              -->
+    <!-- ================================================================ -->
+    <style>
+      /* Part 5: Quick Actions command palette (gated by a client-side flag) */
+      .qa-modal { position: fixed; inset: 0; background: rgba(2,6,23,.55); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; z-index: 9999; }
+      .qa-panel { width: min(520px, 92vw); background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden; }
+      .qa-search { width: 100%; border: none; border-bottom: 1px solid #e2e8f0; padding: .95rem 1.1rem; font-size: 1rem; outline: none; box-sizing: border-box; }
+      .qa-list { max-height: 320px; overflow-y: auto; }
+      .qa-item { display: flex; align-items: center; gap: .7rem; padding: .7rem 1.1rem; cursor: pointer; font-size: .92rem; color: var(--text); }
+      .qa-item:hover { background: #eef2ff; }
+      .qa-item .ico { font-size: 1.1rem; }
+      .qa-hint { padding: .55rem 1.1rem; font-size: .72rem; color: var(--muted); border-top: 1px solid #e2e8f0; background: #f8fafc; }
+      #qa-trigger[disabled] { opacity: .55; cursor: not-allowed; background: var(--danger); border-color: var(--danger); }
+      .qa-kbd { background: #1e293b; color: #cbd5e1; border-radius: 4px; padding: 1px 6px; font-size: .8em; }
+    </style>
+    <div id="client" class="panel">
+
+      <!-- Client SDK status pill: green when connected to LaunchDarkly, red when offline. -->
+      <div class="flag-status off" id="fs-client-sdk"><span class="dot"></span><span class="lbl">Client SDK: connecting…</span></div>
+
+      <details class="driver" open>
+        <summary>🎬 Demo driver: Client-Side SDK</summary>
+        <ol>
+          <li><strong>The feature:</strong> a <strong>Quick Actions</strong> command palette (press <span class="qa-kbd">Ctrl / ⌘ K</span> or click the button). It is gated by <span class="ld-path">helix-quick-actions</span>, a flag the <em>browser</em> evaluates itself with the client-side SDK, with no backend involved.</li>
+          <li><strong>Toggle it live:</strong> flip <span class="ld-path">helix-quick-actions</span> in LaunchDarkly. The palette enables or disables in this browser within a second, over the SDK's own stream, no reload.</li>
+          <li><strong>The resilience payoff:</strong> click <strong>Simulate LaunchDarkly unavailable</strong>. The client SDK can't reach LaunchDarkly, falls back to its safe default (off), the pill goes <span style="color:var(--danger)">red</span>, and Quick Actions stops working. Click <strong>Reconnect</strong> to restore it.</li>
+          <li><strong>What the browser sees:</strong> open DevTools → Network, filter <code>launchdarkly</code>. The browser receives evaluated <em>values</em> for one context, never the ruleset. That is why the client-side ID is safe to expose.</li>
+        </ol>
+      </details>
+
+      <div class="card">
+        <span class="badge badge-part">Part 5</span>
+        <span class="badge badge-sdk" style="margin-left:.4rem">JavaScript client-side SDK</span>
+        <h2 style="margin-top:.5rem">Part 5: Client-Side SDK</h2>
+        <p>
+          Parts 1-4 evaluate flags <strong>server-side</strong> and push the result to the browser. Here the
+          <strong>browser talks to LaunchDarkly directly</strong> with the JavaScript SDK, initialised with the
+          <strong>client-side ID</strong> (safe to expose) rather than the server SDK key. It gates a real
+          browser feature, <strong>Quick Actions</strong>, and because the browser holds its own LaunchDarkly
+          connection, the feature toggles live and fails safe entirely on its own.
+        </p>
+
+        <div style="margin-top:.5rem">
+          <button class="btn btn-primary" id="qa-trigger" onclick="qaOpen()" disabled>⌘K&nbsp; Quick Actions</button>
+          <span id="qa-status" style="margin-left:.6rem;font-size:.85rem;color:var(--muted)">checking…</span>
+        </div>
+
+        <div id="ld-eval" style="margin-top:.9rem;font-size:.84rem;color:var(--muted)"></div>
+
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
+          <button class="btn" style="background:#f0f4f8;color:var(--text)" onclick="ldSimulateOffline()">Simulate LaunchDarkly unavailable</button>
+          <button class="btn" style="background:#f0f4f8;color:var(--text)" onclick="ldReconnect()">Reconnect</button>
+        </div>
+      </div>
+
+      <!-- Quick Actions palette (the client-side-gated feature). -->
+      <div id="qa-modal" class="qa-modal" style="display:none" onclick="if(event.target===this)qaClose()">
+        <div class="qa-panel">
+          <input id="qa-search" class="qa-search" placeholder="Type a command… (e.g. note, patient, orders)" oninput="qaFilter(this.value)" autocomplete="off" />
+          <div id="qa-list" class="qa-list"></div>
+          <div class="qa-hint">click to run · Esc to close · gated by helix-quick-actions (client-side)</div>
+        </div>
+      </div>
+
+    </div>
+
   </main>
 </div>
 
@@ -951,7 +1019,7 @@
   // Each LaunchDarkly flag maps to a live status badge at the top of its part panel.
   const FLAG_BADGES = {
     'helix-auto-scribe':        { el: 'fs-autoscribe', label: 'Auto-Scribe' },
-    'helix-maternity-pathway':  { el: 'fs-maternity',  label: 'Maternity Pathway' },
+    'helix-maternity-pathway':  { el: 'fs-maternity',  label: 'Maternity Access' },
     'helix-bp-alert-threshold': { el: 'fs-bp',         label: 'BP Threshold', unit: ' mmHg' },
     'helix-parent-connect':     { el: 'fs-parent',     label: 'Parent Connect' },
   };
@@ -1293,6 +1361,141 @@
     t.addEventListener('input', () => autoGrow(t));
   });
   window.addEventListener('resize', () => _textareas.forEach(autoGrow));
+
+  // =======================================================================
+  // Part 5: LaunchDarkly client-side (JavaScript) SDK
+  // The browser evaluates helix-quick-actions DIRECTLY against LaunchDarkly
+  // with the client-side ID (safe to expose), fetched from /client-config.
+  // That flag gates the Quick Actions command palette below. Loaded as an ES
+  // module from a CDN, no build step, and no server SDK involved.
+  // =======================================================================
+  const QA_FLAG    = 'helix-quick-actions';
+  const QA_DEFAULT = false;   // safe default: if LaunchDarkly is unreachable, the feature is OFF
+  const LD_CONTEXT = { kind: 'user', key: 'dr.alvarez@helixhealth.org', department: 'maternity', role: 'attending' };
+  let ldc = null;        // the browser LD client
+  let ldModule = null;   // cached SDK module
+  let qaEnabled = false; // is Quick Actions currently on?
+
+  const QA_ACTIONS = [
+    { ico: '📝', label: 'New encounter note' },
+    { ico: '🔎', label: 'Jump to patient by MRN' },
+    { ico: '💊', label: 'Open order sets' },
+    { ico: '🖨️', label: 'Print patient summary' },
+    { ico: '🔤', label: 'Search ICD-10 codes' },
+  ];
+
+  // ---- The feature: Quick Actions command palette -------------------------
+  function qaRenderList(filter) {
+    const list = document.getElementById('qa-list');
+    if (!list) return;
+    const f = (filter || '').trim().toLowerCase();
+    const items = QA_ACTIONS.filter(a => a.label.toLowerCase().includes(f));
+    list.innerHTML = items.length
+      ? items.map(a => `<div class="qa-item" data-label="${a.label}" onclick="qaRun(this.dataset.label)"><span class="ico">${a.ico}</span> ${a.label}</div>`).join('')
+      : '<div class="qa-item" style="color:var(--muted);cursor:default">No matching command</div>';
+  }
+  function qaOpen() {
+    if (!qaEnabled) return;                       // feature off → nothing happens
+    const m = document.getElementById('qa-modal');
+    if (!m) return;
+    qaRenderList('');
+    m.style.display = 'flex';
+    const s = document.getElementById('qa-search');
+    if (s) { s.value = ''; setTimeout(() => s.focus(), 0); }
+  }
+  function qaClose() { const m = document.getElementById('qa-modal'); if (m) m.style.display = 'none'; }
+  function qaFilter(v) { qaRenderList(v); }
+  function qaRun(label) {
+    qaClose();
+    const st = document.getElementById('qa-status');
+    if (st) { st.textContent = `✓ ran "${label}"`; st.style.color = '#16a34a'; setTimeout(qaSyncStatus, 1600); }
+  }
+  function qaSyncStatus() {
+    const btn = document.getElementById('qa-trigger');
+    const st  = document.getElementById('qa-status');
+    const offline = (document.getElementById('fs-client-sdk') || {}).className === 'flag-status off';
+    if (btn) btn.disabled = !qaEnabled;
+    if (st)  { st.style.color = 'var(--muted)'; st.textContent = qaEnabled ? 'available — press ⌘K or click' : (offline ? 'unavailable (LaunchDarkly offline)' : 'unavailable (feature flag off)'); }
+  }
+  function qaSetEnabled(on) { qaEnabled = !!on; if (!qaEnabled) qaClose(); qaSyncStatus(); }
+
+  // Ctrl / ⌘ K opens the palette when the Part 5 tab is active and the feature is on; Esc closes.
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      const tab = document.getElementById('client');
+      if (tab && tab.classList.contains('active')) { e.preventDefault(); qaOpen(); }
+    } else if (e.key === 'Escape') { qaClose(); }
+  });
+
+  // ---- Client SDK plumbing ------------------------------------------------
+  function ldSetPill(state) {   // 'connecting' | 'connected' | 'offline'
+    const el = document.getElementById('fs-client-sdk');
+    if (!el) return;
+    const map = { connecting: ['flag-status',     'Client SDK: connecting…'],
+                  connected:  ['flag-status on',  'Client SDK: connected'],
+                  offline:    ['flag-status off', 'Client SDK: offline'] };
+    const [cls, lbl] = map[state] || map.connecting;
+    el.className = cls;
+    el.querySelector('.lbl').textContent = lbl;
+  }
+  function ldRenderEval(value, detail) {
+    const el = document.getElementById('ld-eval');
+    if (!el) return;
+    const reason = detail && detail.reason ? detail.reason.kind : 'n/a';
+    el.innerHTML = `Browser evaluated <code>${QA_FLAG}</code> → <code>${value}</code> (reason <code>${reason}</code>) for context <code>${LD_CONTEXT.key}</code>.`;
+  }
+  async function ldLoadModule() {
+    if (!ldModule) ldModule = await import('https://cdn.jsdelivr.net/npm/launchdarkly-js-client-sdk@3.9.3/+esm');
+    return ldModule;
+  }
+
+  async function ldClientInit() {
+    ldSetPill('connecting');
+    if (ldc) { try { await ldc.close(); } catch (e) {} ldc = null; }
+
+    // 1) Client-side ID from our own service (keeps it out of git).
+    let clientSideId;
+    try { clientSideId = (await (await fetch(`${PYTHON_URL}/client-config`)).json()).clientSideId; }
+    catch (e) { ldSetPill('offline'); qaSetEnabled(QA_DEFAULT); ldRenderEval(QA_DEFAULT, { reason: { kind: 'ERROR' } }); return; }
+
+    let LDClient;
+    try { LDClient = await ldLoadModule(); }
+    catch (e) { ldSetPill('offline'); qaSetEnabled(QA_DEFAULT); return; }
+
+    ldc = LDClient.initialize(clientSideId, LD_CONTEXT, { streaming: true, sendEvents: false, evaluationReasons: true });
+    ldc.on('failed', () => { ldSetPill('offline'); qaSetEnabled(QA_DEFAULT); ldRenderEval(QA_DEFAULT, { reason: { kind: 'ERROR' } }); });
+
+    // Ready → evaluate the flag, enable the feature, wire live updates.
+    try {
+      await ldc.waitForInitialization(5);
+      ldSetPill('connected');
+      const det = ldc.variationDetail(QA_FLAG, QA_DEFAULT);
+      qaSetEnabled(det.value);
+      ldRenderEval(det.value, det);
+      ldc.on(`change:${QA_FLAG}`, (nv) => {
+        const d = ldc.variationDetail(QA_FLAG, QA_DEFAULT);
+        qaSetEnabled(nv);
+        ldRenderEval(d.value, d);
+      });
+    } catch (e) {
+      ldSetPill('offline'); qaSetEnabled(QA_DEFAULT); ldRenderEval(QA_DEFAULT, { reason: { kind: 'ERROR' } });
+    }
+  }
+
+  // "Simulate LaunchDarkly unavailable": close the browser client so it can no
+  // longer reach LaunchDarkly, and fall back to the safe default (feature off).
+  // Clean and honest, this is exactly what happens when the client loses its
+  // connection, with no console noise from a dead host.
+  async function ldSimulateOffline() {
+    if (ldc) { try { await ldc.close(); } catch (e) {} ldc = null; }
+    ldSetPill('offline');
+    qaSetEnabled(QA_DEFAULT);
+    ldRenderEval(QA_DEFAULT, { reason: { kind: 'CLIENT OFFLINE (using default)' } });
+  }
+  function ldReconnect() { ldClientInit(); }
+
+  // Kick off Part 5 on load.
+  ldClientInit();
 </script>
 </body>
 </html>

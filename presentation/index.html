@@ -176,12 +176,13 @@
     <span class="tag">Python SDK</span>
     <span class="tag">Go SDK</span>
     <span class="tag">Java SDK</span>
+    <span class="tag">JavaScript SDK</span>
     <span class="tag blue">AI Config</span>
   </div>
   <h1>Helix Health Group</h1>
   <h3 style="color:var(--helix-light);font-size:1em;margin-top:8px;">
     LaunchDarkly in Production:<br>
-    Release &nbsp;·&nbsp; Target &nbsp;·&nbsp; Alerts &nbsp;·&nbsp; Parent Connect &nbsp;·&nbsp; AI Config
+    Release &nbsp;·&nbsp; Target &nbsp;·&nbsp; Alerts &nbsp;·&nbsp; Parent Connect &nbsp;·&nbsp; Client-Side SDK &nbsp;·&nbsp; AI Config
   </h3>
   <p style="margin-top:40px;font-size:0.44em;color:#475569;">
     Solutions Engineering Demo &nbsp;·&nbsp; 2025 &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -323,12 +324,12 @@
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;font-size:.9em;color:var(--ld-light);">
-      ↑ &nbsp;All three services stream flag state from <strong>LaunchDarkly</strong>
+      ↑ &nbsp;Three services stream flag state from <strong>LaunchDarkly</strong>. In Part 5 the <strong>browser</strong> connects directly too, with the JavaScript client-side SDK.
     </div>
   </div>
   <aside class="notes">
-    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project. A Python service that owns Part 1, a Go service that handles the Part 2, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags can be utilized with many different development groups.
-  </aside>
+    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project. A Python service that owns Part 1, a Go service that handles the Part 2, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags can be utilized with many different development groups. And in Part 6 I add a fourth SDK, JavaScript, running in the browser itself, so the same flag ends up evaluated both server-side and directly in the page.
+</aside>
 </section>
 
 
@@ -501,7 +502,7 @@ es.onmessage = (e) => {
 <section class="section-bg">
   <div class="part">Part 2</div>
   <h2>Target</h2>
-  <p style="color:var(--muted);font-size:0.68em;">Show the new Maternity Care Pathway to the right clinicians, by one simple rule</p>
+  <p style="color:var(--muted);font-size:0.68em;">Control which clinicians can access the new Maternity Care Pathway, by one simple rule</p>
   <div class="callout" style="margin-top:26px;">
     Flag: <code>helix-maternity-pathway</code> &nbsp;·&nbsp; Type: Boolean + Targeting &nbsp;·&nbsp; SDK: Go
   </div>
@@ -721,7 +722,7 @@ boolean alert = reading >= threshold;
     Flags: <code>helix-parent-connect</code> (gate) &nbsp;·&nbsp; <code>helix-clinical-ai</code> (AI Config) &nbsp;·&nbsp; SDK: Python
   </div>
   <aside class="notes">
-    Part 4 is the most human part of the demo: a 24/7 AI assistant for new parents. It shows two LaunchDarkly controls working together, a boolean flag that gates the whole feature, and the AI Config that owns the model and the prompt.
+    Part 4 is the most human part of the demo: a 24/7 AI assistant for new parents. It shows two LaunchDarkly controls working together, a boolean flag that gates the whole Parent Connect functionality, and the AI Config that owns the model and the prompt.
   </aside>
 </section>
 
@@ -776,17 +777,106 @@ if not ld.variation("helix-parent-connect",
 
 
 <!-- ══════════════════════════════════════════
-     SECTION DIVIDER: PART 5 (AI CONFIG)
+     SECTION DIVIDER: PART 5 (CLIENT-SIDE SDK)
 ══════════════════════════════════════════ -->
 <section class="section-bg">
   <div class="part">Part 5</div>
+  <h2>Client-Side SDK</h2>
+  <p style="color:var(--muted);font-size:0.68em;">Gate a real browser feature with the LaunchDarkly JavaScript SDK</p>
+  <div class="callout" style="margin-top:26px;">
+    Flag: <code>helix-quick-actions</code> &nbsp;·&nbsp; SDK: JavaScript (client-side) &nbsp;·&nbsp; Key: Client-side ID
+  </div>
+  <aside class="notes">
+    Part 5 is the one piece we haven't shown yet: the browser talking to LaunchDarkly directly. Everything so far has been server-side; our Python, Go, and Java services evaluate flags and push the results to the browser. Here I add the LaunchDarkly JavaScript SDK running in the browser itself, gating a real feature, a Quick Actions command palette, with its own flag, helix-quick-actions. It's the cleanest way to show what makes the client-side SDK different, and the security thinking behind it.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     PART 5: TWO SDK TYPES / TWO KEYS
+══════════════════════════════════════════ -->
+<section>
+  <div class="part">Part 5: Two SDK Types</div>
+  <h2>The Server Holds the Rules. The Browser Gets Values.</h2>
+  <div class="cards cards-2" style="margin-top:16px;">
+    <div class="callout">
+      <strong>Server-side SDK (Parts 1-4, 6):</strong><br><br>
+      ▸ Python / Go / Java hold the full ruleset<br>
+      ▸ Evaluate any context, for anyone<br>
+      ▸ Uses <code>LD_SERVER_SDK_KEY</code> (secret)<br>
+      ▸ Browser sees only what our services push over SSE
+    </div>
+    <div class="callout">
+      <strong>Client-side SDK (Part 5):</strong><br><br>
+      ▸ The browser evaluates the flag itself<br>
+      ▸ Receives evaluated <em>values</em> for one context, never the rules<br>
+      ▸ Uses <code>LD_CLIENT_SIDE_ID</code> (safe to expose)<br>
+      ▸ Flag must be marked "available to client-side SDKs"
+    </div>
+  </div>
+  <div class="callout" style="margin-top:18px;font-size:0.62em;">
+    That split is the security reason for two key types: the server key can read the rules; the client-side ID only ever yields values. We prove it live in DevTools.
+  </div>
+  <aside class="notes">
+    Here's the key idea, and it's genuinely a security point, not just a technical one. A server-side SDK holds your entire flag configuration, all the targeting rules, and can evaluate for anyone, which is exactly why the server SDK key is secret and never goes near a browser. The client-side SDK is deliberately different: the browser initialises with the client-side ID, and all it can ever receive is the evaluated value for the one context it sends, never the rules themselves. That is the whole reason LaunchDarkly issues two key types, and in the demo I'll open DevTools and show you that the browser really does only get values.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     PART 5: WHAT TO WATCH IN THE DEMO
+══════════════════════════════════════════ -->
+<section>
+  <div class="part">Part 5: What to Watch</div>
+  <h2>A Real Feature, Gated Live in the Browser</h2>
+  <div style="margin-top:16px;">
+    <div class="cap">
+      <span class="icon">⌨️</span>
+      <div class="text"><strong>Quick Actions palette</strong><span>A ⌘K command palette in the dashboard, enabled only while the flag is on. The browser's own SDK decides, not our backend.</span></div>
+    </div>
+    <div class="cap">
+      <span class="icon">⚡</span>
+      <div class="text"><strong>Toggle it live</strong><span>Flip helix-quick-actions in LaunchDarkly and the button enables or disables within a second, over the SDK's own stream. No reload, no backend call.</span></div>
+    </div>
+    <div class="cap">
+      <span class="icon">🛟</span>
+      <div class="text"><strong>The resilience payoff</strong><span>Simulate LaunchDarkly unavailable: the client closes, falls back to the safe default (off), the pill turns red, and the feature stops. Reconnect restores it, and the server-side parts are untouched.</span></div>
+    </div>
+    <div class="cap">
+      <span class="icon">🔒</span>
+      <div class="text"><strong>What the browser sees</strong><span>variationDetail() returns the value and the reason for one context, never the ruleset. The security boundary, made visible in DevTools.</span></div>
+    </div>
+  </div>
+  <aside class="notes">
+    In the demo there are four things to watch. First, the feature itself: a Quick Actions command palette, the kind of Command-K menu you see in modern apps, enabled only when helix-quick-actions is on, and the browser's own LaunchDarkly client decides that, not our backend. Second, I'll flip the flag in LaunchDarkly and you'll watch the button enable or disable in the browser within a second, over the SDK's own stream, with no reload and no call back to our services. Third, the resilience payoff: I'll click Simulate LaunchDarkly unavailable, the browser client closes its connection, falls back to the safe default which is off, the status pill turns red, and Quick Actions stops working; Reconnect brings it straight back, and the server-side parts are never affected because this is the browser's own connection. And fourth, I'll show variationDetail and the network panel, evaluated values for one context, never the rules, the security boundary made visible.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     DEMO TRANSITION: PART 5
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <h2>Now let's see the demo for Part 5!</h2>
+  <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Client-Side SDK</p>
+  <aside class="notes">
+    Now to the live app for Part 5. I'll open the Quick Actions palette with Command-K, toggle helix-quick-actions in LaunchDarkly and watch the button enable and disable live, then click Simulate LaunchDarkly unavailable so the browser falls back to its safe default and the feature switches off, reconnect to restore it, and finally show in DevTools that the browser only ever receives evaluated values, never the ruleset.
+  </aside>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION DIVIDER: PART 6 (AI CONFIG)
+══════════════════════════════════════════ -->
+<section class="section-bg">
+  <div class="part">Part 6</div>
   <h2>AI Config</h2>
   <p style="color:var(--muted);font-size:0.68em;">Control your AI models and prompts from the LaunchDarkly dashboard</p>
   <div class="callout" style="margin-top:26px;">
     Flag: <code>helix-clinical-ai</code> &nbsp;·&nbsp; Type: AI Config &nbsp;·&nbsp; SDK: Python + LD AI SDK
   </div>
   <aside class="notes">
-    Finally, Part 5: how do you manage AI responsibly? Helix runs three different clinical AI personas, and today every prompt tweak or model change is a code change and a deployment. LaunchDarkly's AI Config is built for exactly this; the helix-clinical-ai config controls the model and the prompt from the dashboard.
+    Finally, Part 6: how do you manage AI responsibly? Helix runs three different clinical AI personas, and today every prompt tweak or model change is a code change and a deployment. LaunchDarkly's AI Config is built for exactly this; the helix-clinical-ai config controls the model and the prompt from the dashboard.
   </aside>
 </section>
 
@@ -795,7 +885,7 @@ if not ld.variation("helix-parent-connect",
      SLIDE 20  AI DEPLOYMENT PROBLEM
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">Part 5: The Problem</div>
+  <div class="part">Part 6: The Problem</div>
   <h2>AI Prompts Shouldn't Live in Code</h2>
   <div class="cards cards-2" style="margin-top:16px;">
     <div class="callout red">
@@ -825,7 +915,7 @@ if not ld.variation("helix-parent-connect",
      SLIDE 21  THREE PERSONAS
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">Part 5: Three Variations</div>
+  <div class="part">Part 6: Three Variations</div>
   <h2>Three Clinical AI Personas</h2>
   <table style="margin-top:16px;">
     <tr><th>Context Attribute</th><th>Persona</th><th>Model</th><th>Purpose</th></tr>
@@ -862,7 +952,7 @@ if not ld.variation("helix-parent-connect",
      SLIDE 22  AI CONFIG CODE
 ══════════════════════════════════════════ -->
 <section>
-  <div class="part">Part 5: Integration</div>
+  <div class="part">Part 6: Integration</div>
   <h2>One Code Path. Many Configurations.</h2>
   <pre style="font-size:0.5em;"><code class="python">from ldai.client import LDAIClient, AIConfig
 ai_client = LDAIClient(ld)            # wraps your existing LD client
@@ -888,13 +978,13 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
 
 
 <!-- ══════════════════════════════════════════
-     DEMO TRANSITION: PART 5
+     DEMO TRANSITION: PART 6
 ══════════════════════════════════════════ -->
 <section class="section-bg">
-  <h2>Now let's see the demo for Part 5!</h2>
+  <h2>Now let's see the demo for Part 6!</h2>
   <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; AI Config</p>
   <aside class="notes">
-    Finally, the live app for Part 5. I'll generate billing codes, then change a model or a prompt in the helix-clinical-ai AI Config and run it again; the next call picks up the new configuration instantly, with no deploy.
+    Finally, the live app for Part 6. I'll generate billing codes, then change a model or a prompt in the helix-clinical-ai AI Config and run it again; the next call picks up the new configuration instantly, with no deploy.
   </aside>
 </section>
 
@@ -924,6 +1014,10 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
     <div class="cap">
       <span class="icon">🤖</span>
       <div class="text"><strong>AI Config</strong><span>Model + system prompt controlled from the dashboard. Three clinical AI personas; update any of them without a deployment.</span></div>
+    </div>
+    <div class="cap">
+      <span class="icon">🌐</span>
+      <div class="text"><strong>Client-side evaluation</strong><span>The browser evaluates a flag directly with the client-side ID: live updates in the page, and only evaluated values, never rules, ever reach it.</span></div>
     </div>
   </div>
   <aside class="notes">
@@ -984,7 +1078,8 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
       <p>
         <code>helix-auto-scribe</code>: Boolean<br>
         <code>helix-maternity-pathway</code>: Boolean + targeting<br>
-        <code>helix-clinical-ai</code>: AI Config
+        <code>helix-clinical-ai</code>: AI Config<br>
+        <code>helix-quick-actions</code>: Boolean (client-side)
       </p>
     </div>
     <div class="card">

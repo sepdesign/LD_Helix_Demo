@@ -1,6 +1,6 @@
 # Integrating LaunchDarkly into Helix Health Group
 
-This guide walks through taking an application with **no feature management** and progressively adding LaunchDarkly capabilities: basic flag evaluation, real-time listeners, targeted rollouts, configuration-driven features (Number/String/JSON flags), and AI Config.
+This guide walks through taking an application with **no feature management** and progressively adding LaunchDarkly capabilities: basic flag evaluation, real-time listeners, targeted rollouts, configuration-driven features (Number/String/JSON flags), AI Config, and client-side (browser) evaluation with the JavaScript SDK.
 
 ---
 
@@ -67,6 +67,7 @@ public Map<String, Object> getFeature() {
 | Change a flag value | Redeploy the service | Toggle in dashboard, live in seconds |
 | Target specific users | Not possible | Individual + rule-based targeting |
 | Instant browser updates | Page reload or service restart | Server-Sent Events, no reload |
+| Evaluate a flag in the browser | Ship rules to the client, or call your backend | Client-side JS SDK: evaluated values only, never rules |
 | Audit trail | None | Who changed what, when, and why |
 | Tune a runtime parameter | Redeploy to change a constant | Number/String/JSON flag, changed live |
 | AI model/prompt control | Hardcoded string constants | Change from dashboard, no deploy |
@@ -201,7 +202,7 @@ public class LdConfig {
 
 1. Log in to [app.launchdarkly.com](https://app.launchdarkly.com)
 2. Go to **Features → Flags → Create flag**
-3. Name: `Helix Auto-Scribe` | Key: `helix-auto-scribe` | Type: **Boolean**
+3. Name: `Part 1: Helix Auto-Scribe` | Key: `helix-auto-scribe` | Type: **Boolean**
 4. Default variation: **false** (safe default: off)
 5. Save the flag
 
@@ -567,6 +568,69 @@ tracker.track_tokens(
 
 ---
 
+### Step 13: Add the Client-Side SDK (Browser)
+
+Everything above runs a **server-side** SDK: your Python, Go, or Java process holds the full ruleset and evaluates flags for any context. Sometimes you also want the **browser itself** to evaluate a flag, to show or hide UI the instant a flag changes without a round trip to your backend. That is the **client-side (JavaScript) SDK**, and it uses a different credential on purpose.
+
+**Two key types, and why it matters.** The server SDK key can read your entire flag configuration, including targeting rules, so it must never reach a browser. The **client-side ID** is different: a browser initialised with it can only ever receive **evaluated values for the single context it sends**, never the rules. That is the security boundary, and it is why a flag has to be explicitly marked *available to client-side SDKs* before the browser can see it.
+
+| | Server SDK key | Client-side ID |
+|---|---|---|
+| Used by | Python / Go / Java / Node backends | Browser JavaScript, mobile |
+| Can read | The full ruleset, any context | Evaluated values for one context |
+| Safe in a browser? | **Never** | Yes, it is designed to be public |
+| Flag must be marked client-side available? | No | Yes |
+
+**Get the client-side ID to the browser without hardcoding it.** Serve it from your backend, read from the same `.env`, so the ID stays out of git:
+
+```python
+# main.py (FastAPI). The server SDK key and other secrets never leave the server.
+@app.get("/client-config")
+def client_config():
+    return {"clientSideId": os.environ["LD_CLIENT_SIDE_ID"]}
+```
+
+**Load the SDK with no build step** (ES module from a CDN) and evaluate:
+
+```html
+<script>
+  const LD_DEFAULT = false;   // fallback shown before ready, and if LD is unreachable
+  const context = { kind: 'user', key: 'user-123', department: 'maternity', role: 'attending' };
+
+  async function initLD() {
+    const { clientSideId } = await (await fetch('/client-config')).json();
+    const LDClient = await import('https://cdn.jsdelivr.net/npm/launchdarkly-js-client-sdk@3.9.3/+esm');
+
+    const client = LDClient.initialize(clientSideId, context, {
+      streaming: true,           // open the SDK's own stream for live updates
+      evaluationReasons: true,   // so variationDetail() returns the reason
+    });
+
+    // Before ready, variation() returns the default you pass (that is the "flicker").
+    // waitForInitialization() blocks until the real value is available.
+    await client.waitForInitialization(5);
+
+    const detail = client.variationDetail('my-flag', LD_DEFAULT);
+    console.log(detail.value, detail.reason.kind);   // e.g. true  FALLTHROUGH
+
+    // Live updates pushed by LaunchDarkly over the SDK's own stream, no reload:
+    client.on('change:my-flag', (newValue) => render(newValue));
+
+    // What the browser actually holds: evaluated values only, never rules.
+    console.log(client.allFlags());   // { "my-flag": true, ... }
+  }
+</script>
+```
+
+**Design for these on the client:**
+
+- **The ready race.** `initialize()` returns immediately; the real value arrives a moment later. Either `await waitForInitialization()` (no flicker, slower first paint) or render right away and update on the `ready` / `change` event (fast paint, a brief flicker from default to real value). Choose per element.
+- **A safe default.** Always pass a default to `variation()`. If LaunchDarkly is unreachable, the browser serves that default while your server-side path keeps working.
+- **Mark the flag client-side available.** In the flag's **Settings**, check **"SDKs using Client-side ID"**, or the browser cannot see it.
+- **Never expose the server SDK key** or any server secret to the browser. Only the client-side ID belongs there.
+
+---
+
 ## Verifying Your Integration
 
 After each step, confirm the integration is working end-to-end.
@@ -591,6 +655,10 @@ curl "http://localhost:8001/feature?userId=dr.reed@helixhealth.org&department=em
 # 4. Confirm the config-driven alert works (Java)
 curl "http://localhost:8002/lab-check?value=135"
 # Expected: {"flag": "helix-bp-alert-threshold", "value": 135, "threshold": 140, "alert": false}
+
+# 5. Confirm the client-side ID is served to the browser (Part 5)
+curl http://localhost:8000/client-config
+# Expected: {"clientSideId": "..."}  (safe to expose; never returns the server SDK key)
 ```
 
 ---
@@ -606,6 +674,7 @@ curl "http://localhost:8002/lab-check?value=135"
 | Evaluation reason | Go SDK returns `RULE_MATCH` / `FALLTHROUGH` | Explain exactly why a user got a result |
 | Configuration as a flag | Java reads a Number flag for a clinical alert threshold | Non-engineers tune real behaviour, no redeploy |
 | AI Config | Model + prompt per clinical persona | Iterate on AI without deployments |
+| Client-side evaluation | Browser JS SDK evaluates with the client-side ID | Flags in the browser; only values, never rules, are exposed |
 
 ---
 
@@ -614,6 +683,7 @@ curl "http://localhost:8002/lab-check?value=135"
 - [LaunchDarkly Python SDK docs](https://docs.launchdarkly.com/sdk/server-side/python)
 - [LaunchDarkly Go SDK docs](https://docs.launchdarkly.com/sdk/server-side/go)
 - [LaunchDarkly Java SDK docs](https://docs.launchdarkly.com/sdk/server-side/java)
+- [LaunchDarkly JavaScript (client-side) SDK docs](https://docs.launchdarkly.com/sdk/client-side/javascript)
 - [AI Config (AgentControl) docs](https://docs.launchdarkly.com/home/ai-configs)
 - [REST API: update a flag](https://docs.launchdarkly.com/tag/feature-flags#operation/patchFeatureFlag)
 - [Custom roles & access tokens](https://docs.launchdarkly.com/home/account/api)

@@ -1,6 +1,6 @@
 # Helix Health Group: LaunchDarkly SE Demo
 
-Three-service demo built with **Python**, **Go**, and **Java**, plus a single-file browser dashboard. Five parts: (1) feature-flag release & instant rollback, (2) context-based targeting, (3) configuration as a flag (a Number flag), (4) a flag-gated AI assistant (Parent Connect), and (5) AI Config.
+Three-service demo built with **Python**, **Go**, and **Java**, plus a single-file browser dashboard that also runs the **JavaScript client-side SDK**. Six parts: (1) feature-flag release & instant rollback, (2) context-based targeting, (3) configuration as a flag (a Number flag), (4) a flag-gated AI assistant (Parent Connect), (5) the client-side SDK evaluating a flag directly in the browser, and (6) AI Config.
 
 ---
 
@@ -15,8 +15,9 @@ Three engineering teams are shipping simultaneously:
 | Clinical AI team | `python-service` | Python + LD AI SDK | Parts 1, 4, 5: Release & Remediate, Parent Connect, AI Config |
 | Patient Access team | `go-service` | Go | Part 2: Targeting |
 | Patient Safety team | `java-service` | Java (Spring Boot) | Part 3: Config-driven clinical alert |
+| Browser dashboard | `frontend/index.html` | JavaScript (client-side) | Part 5: Client-Side SDK |
 
-`frontend/index.html` is a single-file clinical dashboard. No build step; open directly in Chrome.
+`frontend/index.html` is a single-file clinical dashboard. No build step; open directly in Chrome. Parts 1-4 receive flag state server-side over SSE, and Part 6 (AI Config) is evaluated server-side too; Part 5 additionally runs the LaunchDarkly **JavaScript client-side SDK** in the browser (loaded from a CDN as an ES module, still no build step).
 
 ---
 
@@ -130,7 +131,7 @@ Log in to [app.launchdarkly.com](https://app.launchdarkly.com) and create the fo
 Controls the AI clinical transcription and billing-code feature. Used in Part 1.
 
 1. **Features → Flags → Create flag**
-2. Name: `Helix Auto-Scribe`  |  Key: `helix-auto-scribe`  |  Type: Boolean
+2. Name: `Part 1: Helix Auto-Scribe`  |  Key: `helix-auto-scribe`  |  Type: Boolean
 3. Default OFF. Leave targeting rules empty for now.
 4. No per-flag trigger is needed. The Remediate step turns this flag off from the
    command line via the LaunchDarkly REST API, using the account-level `LD_API_TOKEN`
@@ -141,10 +142,10 @@ Controls the AI clinical transcription and billing-code feature. Used in Part 1.
 
 #### Flag 2: `helix-maternity-pathway` (Boolean with targeting)
 
-Controls who sees the new Maternity Care Pathway module. Used in Part 2.
+Controls which departments have access to the new Maternity Care Pathway module. Used in Part 2.
 
 1. **Features → Flags → Create flag**
-2. Name: `Helix Maternity Pathway`  |  Key: `helix-maternity-pathway`  |  Type: Boolean
+2. Name: `Part 2: Helix Maternity Pathway Access`  |  Key: `helix-maternity-pathway`  |  Type: Boolean
 3. Turn targeting ON in the Test environment
 4. Add one rule:
    - Rule 1: `department` **is one of** `maternity` → serve **true**
@@ -157,7 +158,7 @@ Controls who sees the new Maternity Care Pathway module. Used in Part 2.
 
 #### Flag 3: `helix-clinical-ai` (AI Config)
 
-Controls the model and system prompt for three clinical AI personas. Used in Part 5 (AI Config, the ED/OB scribes) and Part 4 (Parent Connect, the HELIX-PARENT persona).
+Controls the model and system prompt for three clinical AI personas. Used in Part 6 (AI Config, the ED/OB scribes) and Part 4 (Parent Connect, the HELIX-PARENT persona).
 
 1. **Agents → Configs → Create config**
 2. Name: `Helix Clinical AI`  |  Key: `helix-clinical-ai`
@@ -210,7 +211,7 @@ Reference current AAP guidelines when relevant.
 Controls the blood-pressure threshold the Java service uses to raise an alert. Used in Part 3.
 
 1. **Features → Flags → Create flag**
-2. Name: `Helix BP Alert Threshold`  |  Key: `helix-bp-alert-threshold`  |  Type: **Number**
+2. Name: `Part 3: Helix BP Alert Threshold`  |  Key: `helix-bp-alert-threshold`  |  Type: **Number**
 3. Set the variation value to **`140`** (mmHg, the usual preeclampsia screening cut-off) and make it the default served value
 4. Save. During the demo you'll change this number (e.g. to `130`) and watch the same reading flip from NORMAL to ALERT, no redeploy.
 
@@ -220,14 +221,26 @@ Controls the blood-pressure threshold the Java service uses to raise an alert. U
 
 #### Flag 5: `helix-parent-connect` (Boolean)
 
-Feature gate for the Parent Connect AI assistant. This flag turns the whole feature on or off; the `helix-clinical-ai` AI Config (Flag 3) separately controls its model and prompt. Used in Part 4 (Parent Connect).
+Feature gate for the Parent Connect AI assistant. This flag turns the whole Parent Connect functionality on or off; the `helix-clinical-ai` AI Config (Flag 3) separately controls its model and prompt. Used in Part 4 (Parent Connect).
 
 1. **Features → Flags → Create flag**
-2. Name: `Helix Parent Connect`  |  Key: `helix-parent-connect`  |  Type: **Boolean**
+2. Name: `Part 4: Helix Parent Connect Functionality`  |  Key: `helix-parent-connect`  |  Type: **Boolean**
 3. Turn it **On** (serving `true`) so the assistant is live
-4. Save. During the demo you'll toggle it **off** and watch Parent Connect fall back to the 24/7 nurse line, then back **on** to restore the AI, no redeploy.
+4. Save. During the demo you'll toggle it **off** and watch Parent Connect fall back to the 24/7 nurse line, then back **on** to restore the AI, no redeploy
 
 > The Python service defaults to `true` if this flag is missing, so Parent Connect works before you create it; creating the flag is what lets you disable it live. If LaunchDarkly is unreachable, the AI Config call also fails safe to the nurse line.
+
+#### Flag 6: `helix-quick-actions` (Boolean, client-side)
+
+Feature gate for the **Quick Actions** command palette in the browser dashboard, evaluated by the JavaScript client-side SDK in Part 5. This is the one flag the browser reads directly, so it must be exposed to client-side SDKs.
+
+1. **Features → Flags → Create flag**
+2. Name: `Part 5: Helix Quick Actions`  |  Key: `helix-quick-actions`  |  Type: **Boolean**
+3. **Make it available to client-side SDKs.** In the create dialog (or the flag's **Settings** afterward) check **"SDKs using Client-side ID"**. Without this box the browser cannot see the flag. (The server-side flags do not need it.)
+4. Turn it **On** (serving `true`) so Quick Actions is live, then **Save**
+5. During the demo you'll toggle it **off** and **on** and watch the ⌘K button disable and enable in the browser within a second, over the SDK's own stream
+
+> The browser defaults to `false` (off) if the flag is missing or LaunchDarkly is unreachable, so Quick Actions simply stays hidden, it never errors. That safe default is the resilience story in Part 5.
 
 ---
 
@@ -306,7 +319,7 @@ Open **http://localhost:3000** in Chrome.
 
 ## Demo Walkthrough
 
-> Each part's page shows a **live status badge** for its feature flag (Parts 1–4), pushed over SSE the instant you toggle the flag in LaunchDarkly. Part 5 (AI Config) has no flag badge. It's an AI Config, not a feature flag.
+> Each part's page shows a **live status badge** for its feature flag (Parts 1–4), pushed over SSE the instant you toggle the flag in LaunchDarkly. Part 5 (Client-Side SDK) shows a single **Client SDK** pill, evaluated by the browser's own client-side SDK rather than our SSE stream. Part 6 (AI Config) has no flag badge. It's an AI Config, not a feature flag.
 
 ### Part 1: Release & Remediate
 
@@ -362,11 +375,23 @@ The "my baby at 2am" assistant, the part that shows two LaunchDarkly controls ov
 3. **Edit the prompt (AI Config):** change the HELIX-PARENT variation's instructions in `helix-clinical-ai`, save, and send again, new guidance, no deploy
 4. **Disable the feature (flag):** toggle **`helix-parent-connect`** off in LD and send a message → it falls back to the 24/7 nurse line; toggle it back **on** to restore the AI. (Step 3 edits the prompt via the AI Config; this is a separate boolean flag, two independent controls over one feature.)
 
-### Part 5: AI Config
+### Part 5: Client-Side SDK
+
+Parts 1-4 evaluate flags **server-side**: the Python, Go, and Java SDKs hold the full ruleset, and the browser only learns of a change because our services push it over SSE. Part 5 runs the **LaunchDarkly JavaScript SDK in the browser itself**, initialised with the **client-side ID** (safe to expose) rather than the server SDK key. It gates a real browser feature, a **Quick Actions** command palette, and because the browser holds its own LaunchDarkly connection the feature toggles live and fails safe entirely on its own.
+
+1. Open the **Part 5: Client-Side SDK** tab. The **Client SDK** pill is green (connected) and the **⌘K Quick Actions** button is enabled. Press ⌘/Ctrl-K or click it to open the palette
+2. **Toggle it live:** flip `helix-quick-actions` in LaunchDarkly. Within a second the button enables or disables in the browser, over the SDK's own stream, with no reload and no backend call
+3. **The resilience payoff:** click **Simulate LaunchDarkly unavailable**. The browser client closes its connection, falls back to the safe default (off), the pill turns **red**, and Quick Actions stops working. Click **Reconnect** to restore it. The server-side parts are unaffected, this is the browser's own connection
+4. **Evaluation detail:** the panel shows a one-line `variationDetail()` readout, the value and the `reason` (`FALLTHROUGH` / `OFF` / `ERROR`) for the exact context sent
+5. **What the browser can see:** open **DevTools → Network**, filter to `launchdarkly`. The client receives evaluated **values** for one context, never the ruleset. That is the security reason LaunchDarkly issues two key types: the server SDK key can read the rules, the client-side ID only ever yields evaluated values
+
+> Part 5 fetches the client-side ID from `GET /client-config` (served by the Python service from `.env`), so the ID stays out of git and `.env` remains the single source of truth. The server SDK key and Anthropic key never reach the browser.
+
+### Part 6: AI Config
 
 The same `helix-clinical-ai` AI Config drives the clinical scribe personas. The `department` context attribute routes each request to the right model + prompt. Adding a persona or swapping a model is a dashboard change, not a code change.
 
-1. Open the **Part 5: AI Config** tab
+1. Open the **Part 6: AI Config** tab
 2. Select **ED** → served by HELIX-SCRIBE-ED (Claude Haiku) with the ED coding prompt
 3. Select **OB** → served by HELIX-SCRIBE-OB (Claude Sonnet) with the OB coding prompt
 4. Generate codes, then change a variation's model or instructions in LD and generate again. The next call uses the new config instantly, with no deploy
@@ -386,7 +411,7 @@ LD_Helix_Demo/
 │   └── check_prerequisites.py  # verifies toolchain, .env, pip deps, ports
 │
 ├── python-service/
-│   ├── main.py           # FastAPI: per-flag SSE stream, AI Config, Parent Connect
+│   ├── main.py           # FastAPI: per-flag SSE stream, AI Config, Parent Connect, GET /client-config
 │   └── requirements.txt
 │
 ├── go-service/
@@ -401,7 +426,7 @@ LD_Helix_Demo/
 │       └── FeatureController.java  # GET /lab-check (config-driven alert)
 │
 ├── frontend/
-│   └── index.html        # single-file clinical dashboard, no build step
+│   └── index.html        # single-file dashboard; also runs the LD JavaScript client-side SDK (Part 5)
 │
 └── presentation/
     └── index.html        # reveal.js slide deck, open in Chrome
@@ -411,7 +436,7 @@ LD_Helix_Demo/
 
 ## Flag Reference
 
-Four feature flags (one per part, Parts 1–4):
+Five feature flags (Parts 1–5), one of which is evaluated client-side in the browser:
 
 | Flag Key | Type | SDK(s) | Used in |
 |----------|------|--------|---------|
@@ -419,8 +444,11 @@ Four feature flags (one per part, Parts 1–4):
 | `helix-maternity-pathway` | Boolean + Targeting | Go | Part 2: Target |
 | `helix-bp-alert-threshold` | Number | Java | Part 3: Alerts |
 | `helix-parent-connect` | Boolean | Python | Part 4: Parent Connect |
+| `helix-quick-actions` | Boolean | JavaScript (client-side) | Part 5: Client-Side SDK |
 
-Plus one **AI Config** (not a feature flag): **`helix-clinical-ai`** (Python + LD AI SDK), which controls the model and system prompt for the clinical AI personas used in Part 4 (Parent Connect, the HELIX-PARENT persona) and Part 5 (AI Config, the ED/OB scribes).
+`helix-quick-actions` must be marked **available to client-side SDKs** (its **Settings → "SDKs using Client-side ID"**) for Part 5, since the browser evaluates it directly.
+
+Plus one **AI Config** (not a feature flag): **`helix-clinical-ai`** (Python + LD AI SDK), which controls the model and system prompt for the clinical AI personas used in Part 4 (Parent Connect, the HELIX-PARENT persona) and Part 6 (AI Config, the ED/OB scribes).
 
 ---
 

@@ -1018,6 +1018,20 @@ if not ld.variation("helix-parent-connect",
         </ol>
       </details>
 
+      <details class="driver rest-commands">
+        <summary>⌨ REST commands (optional, the dashboard toggle does the same)</summary>
+        <p>Prefer curl or Postman? Flip <strong>helix-quick-actions</strong> through the LaunchDarkly REST API and watch the browser's client-side SDK enable or disable Quick Actions live, over its own stream (uses the <code>$LD_API_TOKEN</code> from Part 1's setup):</p>
+        <ol>
+          <li><strong>Enable (turn ON):</strong>
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-quick-actions" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOn"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Disable (turn OFF):</strong> the same call with <code>turnFlagOff</code>:
+            <div class="cmd"><code>curl -X PATCH "https://app.launchdarkly.com/api/v2/flags/default/helix-quick-actions" -H "Authorization: $LD_API_TOKEN" -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" -d '{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}'</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+          </li>
+          <li><strong>Run it in Postman:</strong> method <code>PATCH</code>, URL as above. Headers: <code>Authorization: &lt;your-token&gt;</code> (no "Bearer") and <code>Content-Type: application/json; domain-model=launchdarkly.semanticpatch</code>. Body → raw JSON: <code>{"environmentKey":"test","instructions":[{"kind":"turnFlagOff"}]}</code> (use <code>turnFlagOn</code> to enable). In Postman, edit the auto-added Content-Type so it keeps the <code>; domain-model=…</code> suffix, or LD returns 400.</li>
+        </ol>
+      </details>
+
       <details class="driver code-impl">
         <summary>&#128187; Code used to implement this feature</summary>
         <p>The browser evaluates the flag itself with the JavaScript client-side SDK, fetching the client-side ID from our service and updating live over the SDK's own stream.</p>

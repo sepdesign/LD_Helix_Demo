@@ -495,6 +495,13 @@ es.onmessage = (e) => {
   </aside>
 </section>
 
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 1 &middot; Release &mdash; AI Auto-Scribe is on: the encounter transcript becomes ICD-10 + CPT codes in seconds</p>
+  <img src="screenshots/part1.png" alt="Backup screenshot: Part 1 &middot; Release &mdash; AI Auto-Scribe is on: the encounter transcript becomes ICD-10 + CPT codes in seconds" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 1 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
+</section>
+
 
 <!-- ══════════════════════════════════════════
      SECTION DIVIDER: PART 2
@@ -646,6 +653,13 @@ if detail.Value {
   </aside>
 </section>
 
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 2 &middot; Target &mdash; Dr. Alvarez (Maternity) sees the full Maternity Care Pathway; everyone else gets the standard chart</p>
+  <img src="screenshots/part2.png" alt="Backup screenshot: Part 2 &middot; Target &mdash; Dr. Alvarez (Maternity) sees the full Maternity Care Pathway; everyone else gets the standard chart" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 2 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
+</section>
+
 
 <!-- ══════════════════════════════════════════
      SECTION DIVIDER: PART 3
@@ -708,6 +722,13 @@ boolean alert = reading >= threshold;
   <aside class="notes">
     Now to the live app for Part 3. Watch: I enter a reading of 135, and against the default threshold of 140 it comes back normal. Now I lower that threshold in the dashboard to 130, check the very same 135 again, and it flips to an alert, with no deploy and no restart; the Java service simply read the new number. The takeaway is that flags aren't only switches. A number, a string, or even a JSON blob can let the people closest to the problem tune real behaviour safely, without an engineering ticket every single time.
   </aside>
+</section>
+
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 3 &middot; Alerts &mdash; a 150 mmHg reading flips to ALERT against the Number-flag threshold, read live by the Java SDK</p>
+  <img src="screenshots/part3.png" alt="Backup screenshot: Part 3 &middot; Alerts &mdash; a 150 mmHg reading flips to ALERT against the Number-flag threshold, read live by the Java SDK" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 3 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
 </section>
 
 
@@ -773,6 +794,13 @@ if not ld.variation("helix-parent-connect",
   <aside class="notes">
     Live app for Part 4. I'll send a Parent Connect message and get the warm AI guidance, then toggle the helix-parent-connect flag off and send again, watching it fall back to the 24/7 nurse line.
   </aside>
+</section>
+
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 4 &middot; Parent Connect &mdash; warm HELIX-PARENT guidance with a 911 escalation banner (flag off &rarr; 24/7 nurse line)</p>
+  <img src="screenshots/part4.png" alt="Backup screenshot: Part 4 &middot; Parent Connect &mdash; warm HELIX-PARENT guidance with a 911 escalation banner (flag off &rarr; 24/7 nurse line)" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 4 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
 </section>
 
 
@@ -862,6 +890,20 @@ if not ld.variation("helix-parent-connect",
   <aside class="notes">
     Now to the live app for Part 5. I'll open the Quick Actions palette with Command-K, toggle helix-quick-actions in LaunchDarkly and watch the button enable and disable live. With DevTools open you'll see the browser make its own flag call to LaunchDarkly each time an action runs. Then I'll click Simulate LaunchDarkly unavailable: the feature falls back to its default and switches off, and the Network tab shows the flag request coming back 503 Service Unavailable. I'll reconnect to restore it, and point out that the browser only ever receives evaluated values, never the ruleset.
   </aside>
+</section>
+
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 5 &middot; Client-Side &mdash; the Quick Actions palette, gated by helix-quick-actions evaluated in the browser</p>
+  <img src="screenshots/part5.png" alt="Backup screenshot: Part 5 &middot; Client-Side &mdash; the Quick Actions palette, gated by helix-quick-actions evaluated in the browser" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 5 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
+</section>
+
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 5 &middot; Client-Side &mdash; Simulate LaunchDarkly unavailable: the feature falls back to off, with the failed request in the Network tab</p>
+  <img src="screenshots/part5-offline.png" alt="Backup screenshot: Part 5 &middot; Client-Side &mdash; Simulate LaunchDarkly unavailable: the feature falls back to off, with the failed request in the Network tab" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 5 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
 </section>
 
 
@@ -986,6 +1028,13 @@ tracker.track_success()                    # ← usage tracked back to LD</code>
   <aside class="notes">
     Finally, the live app for Part 6. I'll generate billing codes, then change a model or a prompt in the helix-clinical-ai AI Config and run it again; the next call picks up the new configuration instantly, with no deploy.
   </aside>
+</section>
+
+<!-- BACKUP SCREENSHOT (fallback if the live demo fails) -->
+<section class="section-bg" data-background="#0b1220">
+  <p style="color:var(--muted);font-size:0.55em;margin:0 0 12px;letter-spacing:.03em">&#128248; BACKUP &nbsp;&middot;&nbsp; Part 6 &middot; AI Config &mdash; ED routes to HELIX-SCRIBE-ED (Claude Haiku); the model and prompt come from the LaunchDarkly dashboard</p>
+  <img src="screenshots/part6.png" alt="Backup screenshot: Part 6 &middot; AI Config &mdash; ED routes to HELIX-SCRIBE-ED (Claude Haiku); the model and prompt come from the LaunchDarkly dashboard" style="display:block;margin:0 auto;max-width:100%;max-height:80%;height:auto;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55)">
+  <aside class="notes">Fallback for the Part 6 live demo. If the app hiccups: &quot;Oh, live demos&mdash;let me show you exactly what that looks like,&quot; then walk through this screenshot.</aside>
 </section>
 
 

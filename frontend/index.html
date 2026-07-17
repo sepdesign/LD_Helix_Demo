@@ -74,6 +74,16 @@
     .backend-status .svc.ok   .dot { background: var(--ok); }
     .backend-status .svc.down .dot { background: var(--danger); }
 
+    /* "Presentation" link in the header - opens the slide deck (served on :3001) */
+    .present-link {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: rgba(255,255,255,.15); border-radius: 999px;
+      padding: .25rem .85rem; font-size: .74rem; font-weight: 600;
+      color: #fff; text-decoration: none; white-space: nowrap;
+      transition: background .15s;
+    }
+    .present-link:hover { background: rgba(255,255,255,.32); }
+
     /* ------------------------------------------------------------------ */
     /* Layout                                                               */
     /* ------------------------------------------------------------------ */
@@ -369,6 +379,8 @@
   <h1>⚕ Helix Health Group: Clinical Platform</h1>
   <div style="display:flex;align-items:center;gap:1rem">
     <span>LaunchDarkly SE Demo</span>
+    <a class="present-link" href="http://localhost:3001/" target="_blank" rel="noopener"
+       title="Open the slide deck (served on localhost:3001)">Presentation ↗</a>
     <div id="backend-status" class="backend-status" title="Backend services · if any is red, run ./run.sh">
       <span class="svc" id="svc-python"><span class="dot"></span>Python</span>
       <span class="svc" id="svc-go"><span class="dot"></span>Go</span>

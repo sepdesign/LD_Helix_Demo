@@ -315,6 +315,15 @@ Open **http://localhost:3000** in Chrome.
 > The Python service must be running for the SSE listener to work.  
 > Go and Java are needed for the Part 2 (targeting) and Part 3 (alerts) demo tabs.
 
+### Terminal 5: Presentation deck (port 3001, optional)
+
+```bash
+cd presentation
+python -m http.server 3001
+```
+
+Open the slides at **http://localhost:3001**, or click **Presentation ↗** in the app header. `./run.sh` starts this automatically alongside the four services.
+
 ---
 
 ## Demo Walkthrough

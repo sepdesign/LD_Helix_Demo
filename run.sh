@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# run.sh - start the Helix Health Group LaunchDarkly demo (all four services).
+# run.sh - start the Helix Health Group LaunchDarkly demo (all five services).
 #
 # Safe to run any time. It checks each service's port and starts ONLY the ones that
 # aren't already running, so if some services are already up it just fills in the
@@ -89,6 +89,7 @@ start_svc python   8000 python-service "$PY" main.py
 start_svc go       8001 go-service     go run main.go
 start_svc java     8002 java-service   mvn spring-boot:run
 start_svc frontend 3000 frontend       "$PY" -m http.server 3000
+start_svc presentation 3001 presentation "$PY" -m http.server 3001
 
 # 4. Wait for ports and report. Go and Java COMPILE on start (go run / mvn spring-boot:run),
 #    so they get generous timeouts - a slow first compile is not a failure.
@@ -98,6 +99,7 @@ wait_up 8000 40;  py_ok=$?
 wait_up 8001 75;  go_ok=$?
 wait_up 8002 120; jv_ok=$?
 wait_up 3000 15;  fe_ok=$?
+wait_up 3001 15;  pr_ok=$?
 
 status() { if [ "$1" -eq 0 ]; then echo "UP"; else echo "DOWN  (see logs/$2.log)"; fi; }
 echo
@@ -106,10 +108,12 @@ echo "  Python   (8000)  $(status "$py_ok" python)"
 echo "  Go       (8001)  $(status "$go_ok" go)"
 echo "  Java     (8002)  $(status "$jv_ok" java)"
 echo "  Frontend (3000)  $(status "$fe_ok" frontend)"
+echo "  Slides   (3001)  $(status "$pr_ok" presentation)"
 echo "------------------------------------------------------------"
 echo "  Demo:   http://localhost:3000"
+echo "  Slides: http://localhost:3001"
 echo "  Stop:   ./stop.sh"
 echo
 
 # Exit non-zero if anything failed to start (handy for scripting / CI).
-[ "$py_ok" -eq 0 ] && [ "$go_ok" -eq 0 ] && [ "$jv_ok" -eq 0 ] && [ "$fe_ok" -eq 0 ]
+[ "$py_ok" -eq 0 ] && [ "$go_ok" -eq 0 ] && [ "$jv_ok" -eq 0 ] && [ "$fe_ok" -eq 0 ] && [ "$pr_ok" -eq 0 ]

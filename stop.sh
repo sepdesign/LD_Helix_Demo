@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# stop.sh - stop all four Helix demo services (Python 8000, Go 8001,
-# Java 8002, Frontend 3000) by finding and killing whatever is listening
-# on each port. Safe to run repeatedly; ports already free are skipped.
+# stop.sh - stop all five Helix demo services (Python 8000, Go 8001,
+# Java 8002, Frontend 3000, Presentation 3001) by finding and killing whatever
+# is listening on each port. Safe to run repeatedly; ports already free are skipped.
 #
 # Usage:  ./stop.sh   (or: bash stop.sh)
 #
@@ -44,6 +44,7 @@ kill_port() {
 echo "============================================================"
 echo " Helix LaunchDarkly demo - stop.sh"
 echo "============================================================"
+kill_port presentation 3001
 kill_port frontend 3000
 kill_port java     8002
 kill_port go       8001

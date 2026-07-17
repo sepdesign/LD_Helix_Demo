@@ -1118,6 +1118,9 @@ ldc.on('change:helix-quick-actions', v =&gt;
     if (typeof autoGrow === 'function') {
       document.getElementById(id).querySelectorAll('textarea').forEach(autoGrow);
     }
+    // Part 5 only: fire the client SDK health ping right away so its single 200
+    // shows up the moment you land on the tab (it then repeats every 5s).
+    if (id === 'client' && typeof ldHealthPoll === 'function') ldHealthPoll();
   }
 
   // -----------------------------------------------------------------------
@@ -1515,6 +1518,7 @@ ldc.on('change:helix-quick-actions', v =&gt;
   let ldModule = null;   // cached SDK module
   let qaEnabled = false; // is Quick Actions currently on?
   let ldClientId = null; // client-side ID, cached so the offline sim can reuse it
+  let ldOffline  = false; // true only while the simulated LaunchDarkly outage is active
 
   const QA_ACTIONS = [
     { ico: '📝', label: 'New encounter note' },
@@ -1629,29 +1633,42 @@ ldc.on('change:helix-quick-actions', v =&gt;
     }
   }
 
+  // Part 5 health poll: one recurring request, shown only while the Client-Side
+  // tab is active (the inverse of the backend health lights above, which pause
+  // here). It mirrors those lights for the browser SDK path, as a single check:
+  //   connected → GET /client-config returns 200 (the browser can reach its
+  //               LaunchDarkly config), so one healthy 200 keeps ticking;
+  //   outage    → GET /sdk/evalx/<flag> returns 503, so the failure is just as
+  //               visible in DevTools -> Network.
+  function ldOnPart5() {
+    const el = document.getElementById('client');
+    return !!(el && el.classList.contains('active'));
+  }
+  function ldHealthPoll() {
+    if (!ldOnPart5()) return;              // keep every other tab's Network view clean
+    const url = ldOffline
+      ? `${PYTHON_URL}/sdk/evalx/${QA_FLAG}`   // 503 — LaunchDarkly unreachable
+      : `${PYTHON_URL}/client-config`;         // 200 — browser SDK config path healthy
+    fetch(url, { cache: 'no-store' }).catch(() => {});
+  }
+  setInterval(ldHealthPoll, 5000);
+
   // "Simulate LaunchDarkly unavailable": the browser can no longer reach
   // LaunchDarkly, so the flag falls back to its default (off) and Quick Actions
-  // stops working -- the button disables and the pill goes red. Meanwhile the
-  // browser keeps polling a stand-in flag endpoint that returns 503 Service
-  // Unavailable, so the outage is obvious (and realistic) in DevTools -> Network.
-  // Reconnect stops the retries and restores the live client and the feature.
-  let ldOfflineTimer = null;
-  function ldOfflinePing() {
-    // A real request that comes back 503 Service Unavailable -- the browser's
-    // flag lookup failing exactly as it would during a LaunchDarkly outage.
-    fetch(`${PYTHON_URL}/sdk/evalx/${QA_FLAG}`, { cache: 'no-store' }).catch(() => {});
-  }
+  // stops working -- the button disables and the pill goes red. The health poll
+  // above now returns 503 every 5s, so the outage is obvious (and realistic) in
+  // DevTools -> Network. Reconnect flips it back to the healthy 200 and restores
+  // the live client and the feature.
   async function ldSimulateOffline() {
     if (ldc) { try { await ldc.close(); } catch (e) {} ldc = null; }
+    ldOffline = true;                      // health poll now hits the 503 stand-in
     ldSetPill('offline');                  // red: the browser can't reach LaunchDarkly
     qaSetEnabled(QA_DEFAULT);              // flag falls back to default (off): the feature stops
     ldRenderEval(QA_DEFAULT, { reason: { kind: 'LAUNCHDARKLY UNREACHABLE (using default)' } });
-    if (ldOfflineTimer) clearInterval(ldOfflineTimer);
-    ldOfflinePing();                       // fail once immediately...
-    ldOfflineTimer = setInterval(ldOfflinePing, 5000);  // ...then keep retrying, visibly (every 5s)
+    ldHealthPoll();                        // show the first 503 immediately
   }
   function ldReconnect() {
-    if (ldOfflineTimer) { clearInterval(ldOfflineTimer); ldOfflineTimer = null; }
+    ldOffline = false;                     // health poll returns to the healthy 200
     ldClientInit();
   }
 

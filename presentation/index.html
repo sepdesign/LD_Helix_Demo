@@ -302,7 +302,7 @@
         <div style="color:var(--ld-light);margin-bottom:7px;font-size:.88em;">↕ SSE + REST</div>
         <div class="arch-svc" style="background:rgba(124,58,237,.2);border:1px solid var(--ld);">
           <div style="color:white;font-weight:700;font-size:1.05em;">Python :8000</div>
-          <div style="color:var(--muted);font-size:.88em;">Parts 1 · 4 · 5</div>
+          <div style="color:var(--muted);font-size:.88em;">Parts 1 · 4 · 6</div>
           <div style="color:var(--muted);font-size:.82em;">→ Anthropic Claude</div>
         </div>
       </div>
@@ -328,7 +328,7 @@
     </div>
   </div>
   <aside class="notes">
-    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project. A Python service that owns Part 1, a Go service that handles the Part 2, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags can be utilized with many different development groups. And in Part 6 I add a fourth SDK, JavaScript, running in the browser itself, so the same flag ends up evaluated both server-side and directly in the page.
+    Let me quickly show you how the demo is wired, because it deliberately mirrors a real production setup. There's one browser dashboard with no build step at all, just a single HTML file you open in Chrome. Behind it sit three small backend services, and they all talk to the same LaunchDarkly project. A Python service that owns Part 1, a Go service that handles the Part 2, and a Java service for Part 3. The reason I'm using three different languages is exactly the point I want to land: the same flags can be utilized with many different development groups. And in Part 5 I add a fourth SDK, JavaScript, running in the browser itself, so a flag is evaluated directly in the page, not only on the server.
 </aside>
 </section>
 
@@ -840,15 +840,15 @@ if not ld.variation("helix-parent-connect",
     </div>
     <div class="cap">
       <span class="icon">🛟</span>
-      <div class="text"><strong>The resilience payoff</strong><span>Simulate LaunchDarkly unavailable: the client closes, falls back to the safe default (off), the pill turns red, and the feature stops. Reconnect restores it, and the server-side parts are untouched.</span></div>
+      <div class="text"><strong>The resilience payoff</strong><span>Simulate LaunchDarkly unavailable: the flag falls back to its default (off), the button disables, the pill turns red, and DevTools → Network shows the flag request come back 503 Service Unavailable. Reconnect restores it; the server-side parts are untouched.</span></div>
     </div>
     <div class="cap">
       <span class="icon">🔒</span>
-      <div class="text"><strong>What the browser sees</strong><span>variationDetail() returns the value and the reason for one context, never the ruleset. The security boundary, made visible in DevTools.</span></div>
+      <div class="text"><strong>What the browser sees</strong><span>In DevTools → Network the browser makes its own calls to LaunchDarkly (a flag evaluation each time an action runs) and only ever receives evaluated values for one context, never the ruleset. The security boundary, made visible.</span></div>
     </div>
   </div>
   <aside class="notes">
-    In the demo there are four things to watch. First, the feature itself: a Quick Actions command palette, the kind of Command-K menu you see in modern apps, enabled only when helix-quick-actions is on, and the browser's own LaunchDarkly client decides that, not our backend. Second, I'll flip the flag in LaunchDarkly and you'll watch the button enable or disable in the browser within a second, over the SDK's own stream, with no reload and no call back to our services. Third, the resilience payoff: I'll click Simulate LaunchDarkly unavailable, the browser client closes its connection, falls back to the safe default which is off, the status pill turns red, and Quick Actions stops working; Reconnect brings it straight back, and the server-side parts are never affected because this is the browser's own connection. And fourth, I'll show variationDetail and the network panel, evaluated values for one context, never the rules, the security boundary made visible.
+    In the demo there are four things to watch. First, the feature itself: a Quick Actions command palette, the kind of Command-K menu you see in modern apps, enabled only when helix-quick-actions is on, and the browser's own LaunchDarkly client decides that, not our backend. Second, I'll flip the flag in LaunchDarkly and you'll watch the button enable or disable in the browser within a second, over the SDK's own stream, with no reload and no call back to our services. Third, the resilience payoff: I'll click Simulate LaunchDarkly unavailable, the flag falls back to its default which is off, the button disables and the pill turns red, and in the Network tab you'll watch the browser's flag request come back 503 Service Unavailable, a realistic outage; Reconnect brings it straight back, and the server-side parts are never affected because this is the browser's own connection. And fourth, with the Network tab open you'll see the browser make its own calls to LaunchDarkly, a flag evaluation each time an action runs, and only ever receive evaluated values for one context, never the rules, the security boundary made visible.
   </aside>
 </section>
 
@@ -860,7 +860,7 @@ if not ld.variation("helix-parent-connect",
   <h2>Now let's see the demo for Part 5!</h2>
   <p style="color:var(--muted);font-size:0.7em;">Live app &nbsp;·&nbsp; <code>http://localhost:3000</code> &nbsp;·&nbsp; Client-Side SDK</p>
   <aside class="notes">
-    Now to the live app for Part 5. I'll open the Quick Actions palette with Command-K, toggle helix-quick-actions in LaunchDarkly and watch the button enable and disable live, then click Simulate LaunchDarkly unavailable so the browser falls back to its safe default and the feature switches off, reconnect to restore it, and finally show in DevTools that the browser only ever receives evaluated values, never the ruleset.
+    Now to the live app for Part 5. I'll open the Quick Actions palette with Command-K, toggle helix-quick-actions in LaunchDarkly and watch the button enable and disable live. With DevTools open you'll see the browser make its own flag call to LaunchDarkly each time an action runs. Then I'll click Simulate LaunchDarkly unavailable: the feature falls back to its default and switches off, and the Network tab shows the flag request coming back 503 Service Unavailable. I'll reconnect to restore it, and point out that the browser only ever receives evaluated values, never the ruleset.
   </aside>
 </section>
 

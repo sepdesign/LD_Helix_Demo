@@ -58,6 +58,7 @@
     .flag-status.on  .dot { background: var(--ok); }
     .flag-status.off .dot { background: var(--danger); }
     .flag-status.num .dot { background: #38bdf8; }
+    .flag-status.warn .dot { background: var(--warn); }
 
     /* Per-service backend health lights in the header (green = up, red = down) */
     .backend-status {
@@ -1201,6 +1202,9 @@ ldc.on('change:helix-quick-actions', v =&gt;
     { id: 'svc-java',   url: JAVA_URL },
   ];
   async function checkServices() {
+    // Pause polling while the Client-Side SDK tab is active, so its Network tab
+    // shows only LaunchDarkly traffic during the demo.
+    if (document.getElementById('client') && document.getElementById('client').classList.contains('active')) return;
     await Promise.all(HEALTH_CHECKS.map(async svc => {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 2500);
@@ -1510,6 +1514,7 @@ ldc.on('change:helix-quick-actions', v =&gt;
   let ldc = null;        // the browser LD client
   let ldModule = null;   // cached SDK module
   let qaEnabled = false; // is Quick Actions currently on?
+  let ldClientId = null; // client-side ID, cached so the offline sim can reuse it
 
   const QA_ACTIONS = [
     { ico: '📝', label: 'New encounter note' },
@@ -1542,13 +1547,18 @@ ldc.on('change:helix-quick-actions', v =&gt;
   function qaFilter(v) { qaRenderList(v); }
   function qaRun(label) {
     qaClose();
+    // Show the SDK talking to LaunchDarkly on use: report the action as a track
+    // event (analytics / experimentation), and re-evaluate the flag via identify()
+    // so each run makes a visible GET to app.launchdarkly.com/sdk/evalx in Network.
+    if (ldc) { try { ldc.track('quick-action', { action: label }); ldc.identify(LD_CONTEXT); } catch (e) {} }
     const st = document.getElementById('qa-status');
     if (st) { st.textContent = `✓ ran "${label}"`; st.style.color = '#16a34a'; setTimeout(qaSyncStatus, 1600); }
   }
   function qaSyncStatus() {
     const btn = document.getElementById('qa-trigger');
     const st  = document.getElementById('qa-status');
-    const offline = (document.getElementById('fs-client-sdk') || {}).className === 'flag-status off';
+    const _cls = (document.getElementById('fs-client-sdk') || {}).className || '';
+    const offline = _cls.includes('off') || _cls.includes('warn');
     if (btn) btn.disabled = !qaEnabled;
     if (st)  { st.style.color = 'var(--muted)'; st.textContent = qaEnabled ? 'available — press ⌘K or click' : (offline ? 'unavailable (LaunchDarkly offline)' : 'unavailable (feature flag off)'); }
   }
@@ -1566,9 +1576,10 @@ ldc.on('change:helix-quick-actions', v =&gt;
   function ldSetPill(state) {   // 'connecting' | 'connected' | 'offline'
     const el = document.getElementById('fs-client-sdk');
     if (!el) return;
-    const map = { connecting: ['flag-status',     'Client SDK: connecting…'],
-                  connected:  ['flag-status on',  'Client SDK: connected'],
-                  offline:    ['flag-status off', 'Client SDK: offline'] };
+    const map = { connecting: ['flag-status',      'Client SDK: connecting…'],
+                  connected:  ['flag-status on',   'Client SDK: connected'],
+                  degraded:   ['flag-status warn', 'Client SDK: LaunchDarkly unreachable (serving cached value)'],
+                  offline:    ['flag-status off',  'Client SDK: offline'] };
     const [cls, lbl] = map[state] || map.connecting;
     el.className = cls;
     el.querySelector('.lbl').textContent = lbl;
@@ -1597,7 +1608,8 @@ ldc.on('change:helix-quick-actions', v =&gt;
     try { LDClient = await ldLoadModule(); }
     catch (e) { ldSetPill('offline'); qaSetEnabled(QA_DEFAULT); return; }
 
-    ldc = LDClient.initialize(clientSideId, LD_CONTEXT, { streaming: true, sendEvents: false, evaluationReasons: true });
+    ldClientId = clientSideId;   // remember it for the offline simulation
+    ldc = LDClient.initialize(clientSideId, LD_CONTEXT, { streaming: true, sendEvents: true, evaluationReasons: true });
     ldc.on('failed', () => { ldSetPill('offline'); qaSetEnabled(QA_DEFAULT); ldRenderEval(QA_DEFAULT, { reason: { kind: 'ERROR' } }); });
 
     // Ready → evaluate the flag, enable the feature, wire live updates.
@@ -1617,17 +1629,31 @@ ldc.on('change:helix-quick-actions', v =&gt;
     }
   }
 
-  // "Simulate LaunchDarkly unavailable": close the browser client so it can no
-  // longer reach LaunchDarkly, and fall back to the safe default (feature off).
-  // Clean and honest, this is exactly what happens when the client loses its
-  // connection, with no console noise from a dead host.
+  // "Simulate LaunchDarkly unavailable": the browser can no longer reach
+  // LaunchDarkly, so the flag falls back to its default (off) and Quick Actions
+  // stops working -- the button disables and the pill goes red. Meanwhile the
+  // browser keeps polling a stand-in flag endpoint that returns 503 Service
+  // Unavailable, so the outage is obvious (and realistic) in DevTools -> Network.
+  // Reconnect stops the retries and restores the live client and the feature.
+  let ldOfflineTimer = null;
+  function ldOfflinePing() {
+    // A real request that comes back 503 Service Unavailable -- the browser's
+    // flag lookup failing exactly as it would during a LaunchDarkly outage.
+    fetch(`${PYTHON_URL}/sdk/evalx/${QA_FLAG}`, { cache: 'no-store' }).catch(() => {});
+  }
   async function ldSimulateOffline() {
     if (ldc) { try { await ldc.close(); } catch (e) {} ldc = null; }
-    ldSetPill('offline');
-    qaSetEnabled(QA_DEFAULT);
-    ldRenderEval(QA_DEFAULT, { reason: { kind: 'CLIENT OFFLINE (using default)' } });
+    ldSetPill('offline');                  // red: the browser can't reach LaunchDarkly
+    qaSetEnabled(QA_DEFAULT);              // flag falls back to default (off): the feature stops
+    ldRenderEval(QA_DEFAULT, { reason: { kind: 'LAUNCHDARKLY UNREACHABLE (using default)' } });
+    if (ldOfflineTimer) clearInterval(ldOfflineTimer);
+    ldOfflinePing();                       // fail once immediately...
+    ldOfflineTimer = setInterval(ldOfflinePing, 5000);  // ...then keep retrying, visibly (every 5s)
   }
-  function ldReconnect() { ldClientInit(); }
+  function ldReconnect() {
+    if (ldOfflineTimer) { clearInterval(ldOfflineTimer); ldOfflineTimer = null; }
+    ldClientInit();
+  }
 
   // Kick off Part 5 on load.
   ldClientInit();

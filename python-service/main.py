@@ -29,7 +29,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from dotenv import load_dotenv
 
 import ldclient
@@ -409,6 +409,23 @@ def health():
 @app.get("/client-config")
 def client_config():
     return {"clientSideId": os.environ["LD_CLIENT_SIDE_ID"]}
+
+
+# ---------------------------------------------------------------------------
+# GET /sdk/evalx/{flag_key}
+# Stand-in for the LaunchDarkly client-side flag endpoint, used ONLY by the
+# Part 5 "Simulate LaunchDarkly unavailable" button: it always returns
+# 503 Service Unavailable, so the browser's polling shows a clean, realistic
+# outage in DevTools -> Network. Real flag evaluation happens against
+# LaunchDarkly in the browser, never here.
+# ---------------------------------------------------------------------------
+@app.get("/sdk/evalx/{flag_key}")
+def simulate_ld_unavailable(flag_key: str):
+    return JSONResponse(
+        status_code=503,
+        content={"error": "Service Unavailable", "flag": flag_key,
+                 "message": "Simulated LaunchDarkly outage"},
+    )
 
 
 # ---------------------------------------------------------------------------
